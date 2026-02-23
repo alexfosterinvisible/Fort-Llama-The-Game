@@ -19,7 +19,7 @@ function getPolicyAdjustedAvgStat(statKey) {
     const sum = residents.reduce((acc, r) => acc + (r.stats[statKey] || 10), 0);
     return sum / residents.length;
   }
-  const excludePct = state.policyConfig.excludePercent || 0.25;
+  const excludePct = state.policyConfig[policy.id]?.excludePercent ?? 0.25;
   const sorted = [...residents].sort((a, b) => (a.stats[statKey] || 10) - (b.stats[statKey] || 10));
   const excludeCount = Math.floor(sorted.length * excludePct);
   if (excludeCount <= 0 || sorted.length <= excludeCount) {

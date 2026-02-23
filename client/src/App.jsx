@@ -1,4 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import './components/dashboard.css';
+import { T, STAT_DISPLAY, BUDGET_DISPLAY } from './components/theme';
+import { TopBar } from './components/TopBar';
+import { ActionPanel } from './components/ActionPanel';
+import { MainDashboard } from './components/MainDashboard';
+import { GameOverScreen } from './components/GameOverScreen';
+import { RecruitModal } from './components/RecruitModal';
+import { BuildModal } from './components/BuildModal';
+import { PoliciesModal } from './components/PoliciesModal';
+import { ResearchModal } from './components/ResearchModal';
 
 const API_BASE = '';
 
@@ -47,6 +57,7 @@ function App() {
   const [expandedPrimitives, setExpandedPrimitives] = useState({});
   const techTreeContainerRef = useRef(null);
   const [techConnectors, setTechConnectors] = useState({});
+  const [activeModal, setActiveModal] = useState(null);
 
   const fetchState = useCallback(async () => {
     try {
@@ -59,7 +70,9 @@ function App() {
           ...data.config,
           health: data.healthConfig,
           primitives: data.primitiveConfig,
-          vibes: data.vibesConfig
+          vibes: data.vibesConfig,
+          scoreConfig: data.scoreConfig,
+          tierConfig: data.tierConfig
         });
       }
       if (rentInput === '' || rentInput === String(data.currentRent)) {
@@ -588,6 +601,248 @@ function App() {
     if (!res.ok) alert(data.error);
   };
 
+  // New dashboard: open modal handler (fetches candidates for recruit)
+  const handleOpenModal = async (modal) => {
+    if (modal === 'recruit' && !gameState.hasRecruitedThisWeek) {
+      try {
+        const res = await fetch(`${API_BASE}/api/recruitment-candidates`);
+        const data = await res.json();
+        setRecruitCandidates(data.candidates || []);
+      } catch (err) {
+        console.error('Failed to fetch candidates:', err);
+      }
+    }
+    setActiveModal(modal);
+  };
+
+  // New dashboard: prepare all props from gameState
+  const dashboardProps = useMemo(() => {
+    if (!gameState || !config) return null;
+
+    const communeResidents = (gameState.communeResidents || []).filter(r => !r.churned);
+    const pop = communeResidents.length;
+
+    // Aggregate stats: average stat → percentage modifier
+    const aggregateStats = {};
+    if (pop > 0) {
+      for (const [key, label] of Object.entries(STAT_DISPLAY)) {
+        const avg = communeResidents.reduce((sum, r) => sum + (r.stats?.[key] || 10), 0) / pop;
+        aggregateStats[label] = Math.round((avg - 10) * 3);
+      }
+    }
+
+    // Residents with display-name skills
+    const residents = communeResidents.map(r => ({
+      name: r.name,
+      skills: r.stats ? Object.fromEntries(
+        Object.entries(STAT_DISPLAY).map(([key, label]) => {
+          const avg = communeResidents.reduce((sum, res) => sum + (res.stats?.[key] || 10), 0) / pop;
+          return [label, Math.round((avg - 10) * 3)];
+        })
+      ) : {},
+    }));
+
+    // Health metrics scaled 0–1 → 0–100
+    const healthMetrics = {
+      livingStandards: Math.round((gameState.healthMetrics?.livingStandards || 0) * 100),
+      productivity: Math.round((gameState.healthMetrics?.productivity || 0) * 100),
+      partytime: Math.round((gameState.healthMetrics?.partytime || 0) * 100),
+    };
+
+    // Treasury
+    const projIncome = gameState.projectedIncome ?? (gameState.residents * gameState.currentRent);
+    const projGroundRent = gameState.projectedGroundRent ?? config.groundRentBase;
+    const projUtilities = gameState.projectedUtilities ?? config.utilitiesBase;
+    const projBudget = gameState.projectedBudget ?? Object.values(budgetInputs).reduce((s, v) => s + v, 0);
+    const projFixedCosts = gameState.projectedFixedCosts ?? 0;
+    const totalExpenses = projGroundRent + projUtilities + projBudget + projFixedCosts;
+    const net = gameState.weeklyDelta ?? (projIncome - totalExpenses);
+
+    const incomeBreakdown = [
+      { label: 'Rent', amount: Math.round(projIncome) },
+    ];
+    const expenseBreakdown = [
+      { label: 'Ground Rent', amount: Math.round(projGroundRent) },
+      { label: 'Utilities', amount: Math.round(projUtilities) },
+      { label: 'Budgets', amount: Math.round(projBudget) },
+    ];
+    if (projFixedCosts > 0) {
+      expenseBreakdown.push({ label: 'Fixed Costs', amount: Math.round(projFixedCosts) });
+    }
+
+    // Primitives + tier labels from coverageData
+    const primKeys = ['nutrition', 'fun', 'drive', 'crowding', 'noise', 'cleanliness', 'maintenance', 'fatigue'];
+    const primitives = {};
+    for (const key of primKeys) {
+      primitives[key] = {
+        value: Math.round(gameState.primitives?.[key] || 0),
+        tier: gameState.coverageData?.[key]?.label || '',
+        threshold: key === 'nutrition' ? 22 : key === 'fun' ? 18 : key === 'drive' ? 20 : undefined,
+      };
+    }
+
+    // Buildings display
+    const buildingDefs = gameState.buildings || buildings || [];
+    const buildingsDisplay = buildingDefs
+      .filter(b => (b.count > 0) || gameState.pendingBuildings?.includes(b.id))
+      .map(b => ({
+        name: b.name,
+        count: b.count || 0,
+        cap: b.capacity || 0,
+        status: gameState.pendingBuildings?.includes(b.id) ? 'pending' : 'active',
+      }));
+
+    // Policies display
+    const activePolicyIds = gameState.activePolicies || [];
+    const policyDefs = gameState.policyDefinitions || [];
+    const policiesDisplay = policyDefs
+      .filter(p => activePolicyIds.includes(p.id) || (!p.techRequired || gameState.researchedTechs?.includes(p.techRequired)))
+      .filter(p => activePolicyIds.includes(p.id))
+      .map(p => ({
+        name: p.name,
+        effect: p.description || p.effect || '',
+        active: true,
+      }));
+
+    // Policy changes logic
+    const policyLimitActive = (gameState.policiesStableWeeks || 0) >= 1 && activePolicyIds.length >= 3;
+    const policyChangesLeft = policyLimitActive
+      ? Math.max(0, (config.policyChangesPerWeek ?? 1) - (gameState.policyChangesThisWeek || 0))
+      : 999;
+
+    // All policies for modal
+    const allPolicies = policyDefs.map(p => ({
+      id: p.id,
+      name: p.name,
+      effect: p.description || p.effect || '',
+      primitive: p.primitive || '',
+      active: activePolicyIds.includes(p.id),
+      unlocked: !p.techRequired || gameState.researchedTechs?.includes(p.techRequired),
+    }));
+
+    // Buildable buildings for modal
+    const buildableBuildings = buildingDefs
+      .filter(b => b.buildable !== false && (!b.techRequired || gameState.researchedTechs?.includes(b.techRequired)))
+      .map(b => ({
+        id: b.id,
+        name: b.name,
+        desc: b.description || '',
+        cost: b.cost || 0,
+        capacity: b.capacity || 0,
+        groundRent: b.groundRentMultiplier ? Math.round(b.groundRentMultiplier * (config.groundRentBase || 700)) : 0,
+        utilities: b.utilitiesMultiplier ? Math.round(b.utilitiesMultiplier * (config.utilitiesBase || 250)) : 0,
+      }));
+
+    // Tech tree for modal
+    const techTree = (gameState.techTree || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      desc: t.description || '',
+      cost: t.cost || gameState.techConfig?.[t.id]?.cost || 0,
+      type: t.type || 'upgrade',
+      tree: t.tree || 'livingStandards',
+      researched: gameState.researchedTechs?.includes(t.id) || false,
+      available: t.available !== false,
+      parent: t.parent || null,
+    }));
+
+    // Culture trophies
+    const researchedCulture = techTree
+      .filter(t => t.type === 'culture' && t.researched)
+      .map(t => ({ id: t.id, badge: t.name, tree: t.tree }));
+
+    // Recruit candidates for modal
+    const candidates = (recruitCandidates || []).map(c => ({
+      id: c.id,
+      name: c.name,
+      age: c.age,
+      bio: c.bio || '',
+      stats: c.stats ? {
+        Sharing: c.stats.sharingTolerance,
+        Cooking: c.stats.cookingSkill,
+        Tidiness: c.stats.tidiness,
+        Handiness: c.stats.handiness,
+        'Consider.': c.stats.consideration,
+        Sociable: c.stats.sociability,
+        Party: c.stats.partyStamina,
+        Work: c.stats.workEthic,
+      } : {},
+    }));
+
+    // Metric history for sparklines (from existing state)
+    const metricHistory = (gameState.metricHistory || []).map(d => ({
+      ls: Math.round((d.livingStandards || 0) * 100),
+      pr: Math.round((d.productivity || 0) * 100),
+      pt: Math.round((d.partytime || 0) * 100),
+    }));
+
+    // Clock
+    const dayName = DAY_NAMES[displayTime.dayIndex] || 'Monday';
+    const timeStr = `${String(displayTime.hour).padStart(2, '0')}:${String(displayTime.minute).padStart(2, '0')}`;
+
+    return {
+      // TopBar
+      vibes: gameState.vibes?.tierName || 'Decent',
+      reputation: gameState.vibes?.branchLabel || gameState.vibes?.reputation || 'Obscure',
+      level: (gameState.coverageData?.tier || 0) + 1,
+      score: gameState.scoring?.totalScore || 0,
+      // ActionPanel
+      week: gameState.week,
+      day: dayName,
+      time: timeStr,
+      hasRecruitedThisWeek: !!gameState.hasRecruitedThisWeek,
+      buildsThisWeek: gameState.buildsThisWeek || 0,
+      buildsPerWeek: config.buildsPerWeek ?? 1,
+      policyChangesLeft,
+      researchingTech: gameState.researchingTech,
+      rent: parseInt(rentInput) || gameState.currentRent || 150,
+      rentTier: (() => {
+        const r = parseInt(rentInput) || gameState.currentRent || 150;
+        const ls = Math.max(0, Math.min(1, gameState.healthMetrics?.livingStandards || 0.5));
+        const rMin = config.rentMin || 50;
+        const rMax = config.rentMax || 500;
+        const curvature = Math.max(0.1, gameState.healthConfig?.livingStandards?.rentTierCurvature ?? 2);
+        const maxTolerant = rMin + (rMax - rMin) * Math.pow(ls, 1 / curvature);
+        const ratio = r / maxTolerant;
+        if (ratio <= 0.3) return 'Bargain';
+        if (ratio <= 0.5) return 'Cheap';
+        if (ratio <= 0.7) return 'Fair';
+        if (ratio <= 0.9) return 'Pricey';
+        return 'Extortionate';
+      })(),
+      rentMin: config.rentMin || 50,
+      rentMax: config.rentMax || 500,
+      rentStep: config.rentStep || 10,
+      budgets: budgetInputs,
+      isPaused,
+      // MainDashboard
+      treasury: Math.round(gameState.treasury || 0),
+      income: Math.round(projIncome),
+      expenses: Math.round(totalExpenses),
+      net: Math.round(net),
+      incomeBreakdown,
+      expenseBreakdown,
+      healthMetrics,
+      metricHistory,
+      researchedCulture,
+      buildings: buildingsDisplay,
+      residents,
+      population: pop,
+      capacity: gameState.capacity || 0,
+      aggregateStats,
+      policies: policiesDisplay,
+      events: [...(gameState.events || [])].reverse(),
+      primitives,
+      // Modals
+      candidates,
+      buildableBuildings,
+      allPolicies,
+      policySlots: config.maxActivePolicies ?? 3,
+      techTree,
+      debtLimit: gameState.config?.gameOverLimit ?? -5000,
+    };
+  }, [gameState, config, budgetInputs, rentInput, isPaused, buildings, recruitCandidates, displayTime, DAY_NAMES]);
+
   const pushAllDevToolConfigs = async () => {
     await fetch(`${API_BASE}/api/config`, {
       method: 'POST',
@@ -613,6 +868,27 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editConfig.techConfig)
+      });
+    }
+    if (editConfig.scoreConfig) {
+      await fetch(`${API_BASE}/api/score-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editConfig.scoreConfig)
+      });
+    }
+    if (editConfig.vibes) {
+      await fetch(`${API_BASE}/api/vibes-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editConfig.vibes)
+      });
+    }
+    if (editConfig.tierConfig) {
+      await fetch(`${API_BASE}/api/tier-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editConfig.tierConfig)
       });
     }
     if (editableBuildings.length > 0) {
@@ -660,50 +936,77 @@ function App() {
   const projectedBudget = gameState.projectedBudget ?? Object.values(budgetInputs).reduce((s, v) => s + v, 0);
   const weeklyDelta = gameState.weeklyDelta ?? (projectedIncome - projectedGroundRent - projectedUtilities - projectedBudget);
 
+
   return (
-    <div className="app">
-      <div className="top-bar">
-        <div className="top-bar-left">
-          <h1>Fort Llama</h1>
-          <div className="nav-buttons">
-            <button 
-              className={view === 'dashboard' ? 'active' : ''} 
-              onClick={() => setView('dashboard')}
-            >
-              Dashboard
-            </button>
-            <button 
-              className={view === 'devtools' ? 'active' : ''} 
-              onClick={() => { setView('devtools'); setEditConfig({
-                ...config,
-                health: gameState?.healthConfig,
-                primitives: gameState?.primitiveConfig,
-                vibes: gameState?.vibesConfig,
-                budgetConfig: gameState?.budgetConfig,
-                policyConfig: gameState?.policyConfig,
-                techConfig: gameState?.techConfig
-              }); }}
-            >
-              Dev Tools
-            </button>
-          </div>
+    <div className="app" style={{ background: T.pageBg, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      {/* Decorative pixel clouds */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+        {/* Large puffy cloud */}
+        <div style={{ position: 'absolute', top: '10%', left: '5%', animation: 'fl-drift1 90s linear infinite', animationDelay: '-10s' }}>
+          <svg width="320" height="96" viewBox="0 0 40 12" shapeRendering="crispEdges" style={{ opacity: 0.85 }}>
+            <rect x="10" y="0" width="8" height="4" fill="#fff"/><rect x="22" y="0" width="6" height="4" fill="#fff"/>
+            <rect x="6" y="4" width="28" height="4" fill="#fff"/>
+            <rect x="2" y="8" width="36" height="4" fill="#fff"/>
+          </svg>
         </div>
-        <div className="top-bar-stats">
-          <div className="top-stat">
-            <span className="top-stat-value">Week {gameState.week}</span>
-          </div>
-          <div className="top-stat">
-            <span className="top-stat-value">{DAY_NAMES[displayTime.dayIndex]}</span>
-          </div>
-          <div className="top-stat clock">
-            <span className="top-stat-value">
-              {String(displayTime.hour).padStart(2, '0')}:{String(displayTime.minute).padStart(2, '0')}
-            </span>
-          </div>
+        {/* Medium flat cloud */}
+        <div style={{ position: 'absolute', top: '30%', left: '55%', animation: 'fl-drift2 110s linear infinite', animationDelay: '-35s' }}>
+          <svg width="240" height="64" viewBox="0 0 30 8" shapeRendering="crispEdges" style={{ opacity: 0.75 }}>
+            <rect x="6" y="0" width="18" height="4" fill="#fff"/>
+            <rect x="2" y="4" width="26" height="4" fill="#fff"/>
+          </svg>
+        </div>
+        {/* Small cloud */}
+        <div style={{ position: 'absolute', top: '55%', left: '15%', animation: 'fl-drift3 70s linear infinite', animationDelay: '-5s' }}>
+          <svg width="160" height="64" viewBox="0 0 20 8" shapeRendering="crispEdges" style={{ opacity: 0.7 }}>
+            <rect x="4" y="0" width="12" height="4" fill="#fff"/>
+            <rect x="0" y="4" width="20" height="4" fill="#fff"/>
+          </svg>
+        </div>
+        {/* Large cloud - lower */}
+        <div style={{ position: 'absolute', top: '72%', left: '60%', animation: 'fl-drift1 100s linear infinite', animationDelay: '-50s' }}>
+          <svg width="280" height="96" viewBox="0 0 35 12" shapeRendering="crispEdges" style={{ opacity: 0.8 }}>
+            <rect x="8" y="0" width="10" height="4" fill="#fff"/><rect x="20" y="0" width="6" height="4" fill="#fff"/>
+            <rect x="4" y="4" width="26" height="4" fill="#fff"/>
+            <rect x="0" y="8" width="35" height="4" fill="#fff"/>
+          </svg>
+        </div>
+        {/* Small wisp */}
+        <div style={{ position: 'absolute', top: '45%', left: '80%', animation: 'fl-drift2 65s linear infinite', animationDelay: '-20s' }}>
+          <svg width="120" height="48" viewBox="0 0 15 6" shapeRendering="crispEdges" style={{ opacity: 0.65 }}>
+            <rect x="3" y="0" width="9" height="3" fill="#fff"/>
+            <rect x="0" y="3" width="15" height="3" fill="#fff"/>
+          </svg>
         </div>
       </div>
+      <TopBar
+        view={view}
+        vibes={dashboardProps?.vibes}
+        reputation={dashboardProps?.reputation}
+        level={dashboardProps?.level}
+        score={dashboardProps?.score}
+        onSwitchView={(v) => {
+          if (v === 'devtools') {
+            setView('devtools');
+            setEditConfig({
+              ...config,
+              health: gameState?.healthConfig,
+              primitives: gameState?.primitiveConfig,
+              vibes: gameState?.vibesConfig,
+              budgetConfig: gameState?.budgetConfig,
+              policyConfig: gameState?.policyConfig,
+              techConfig: gameState?.techConfig
+            });
+          } else {
+            setView(v);
+          }
+        }}
+      />
 
-      {gameState.isGameOver && (
+      {gameState.isGameOver && view === 'dashboard' && (
+        <GameOverScreen onRestart={handleReset} />
+      )}
+      {gameState.isGameOver && view !== 'dashboard' && (
         <div className="game-over">
           <h2>GAME OVER</h2>
           <p>The commune has gone bankrupt! Treasury: {formatCurrency(gameState.treasury)}</p>
@@ -711,8 +1014,99 @@ function App() {
         </div>
       )}
 
-      {view === 'dashboard' && (
-        <div className="dashboard-layout">
+      {view === 'dashboard' && dashboardProps && (
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+          <ActionPanel
+            week={dashboardProps.week}
+            day={dashboardProps.day}
+            time={dashboardProps.time}
+            hasRecruitedThisWeek={dashboardProps.hasRecruitedThisWeek}
+            buildsThisWeek={dashboardProps.buildsThisWeek}
+            buildsPerWeek={dashboardProps.buildsPerWeek}
+            policyChangesLeft={dashboardProps.policyChangesLeft}
+            researchingTech={dashboardProps.researchingTech}
+            rent={dashboardProps.rent}
+            rentTier={dashboardProps.rentTier}
+            rentMin={dashboardProps.rentMin}
+            rentMax={dashboardProps.rentMax}
+            rentStep={dashboardProps.rentStep}
+            budgets={dashboardProps.budgets}
+            isPaused={dashboardProps.isPaused}
+            onOpenModal={handleOpenModal}
+            onRentChange={(val) => setRentInput(String(val))}
+            onRentRelease={() => handleSetRent(rentInput)}
+            onBudgetStep={handleBudgetStep}
+            onStartWeek={handleDismissWeekly}
+            onRestart={() => { if (window.confirm('Are you sure you want to restart the game?')) handleReset(); }}
+          />
+          <MainDashboard
+            treasury={dashboardProps.treasury}
+            income={dashboardProps.income}
+            expenses={dashboardProps.expenses}
+            net={dashboardProps.net}
+            incomeBreakdown={dashboardProps.incomeBreakdown}
+            expenseBreakdown={dashboardProps.expenseBreakdown}
+            healthMetrics={dashboardProps.healthMetrics}
+            metricHistory={dashboardProps.metricHistory}
+            researchedCulture={dashboardProps.researchedCulture}
+            buildings={dashboardProps.buildings}
+            residents={dashboardProps.residents}
+            population={dashboardProps.population}
+            capacity={dashboardProps.capacity}
+            aggregateStats={dashboardProps.aggregateStats}
+            policies={dashboardProps.policies}
+            events={dashboardProps.events}
+            primitives={dashboardProps.primitives}
+          />
+        </div>
+      )}
+
+      {/* New dashboard modals */}
+      {activeModal === 'recruit' && dashboardProps && (
+        <RecruitModal
+          candidates={dashboardProps.candidates}
+          population={dashboardProps.population}
+          capacity={dashboardProps.capacity}
+          hasRecruitedThisWeek={dashboardProps.hasRecruitedThisWeek}
+          onInvite={(id) => { handleInvite(id); setActiveModal(null); }}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === 'build' && dashboardProps && (
+        <BuildModal
+          buildableBuildings={dashboardProps.buildableBuildings}
+          buildsThisWeek={dashboardProps.buildsThisWeek}
+          buildsPerWeek={dashboardProps.buildsPerWeek}
+          treasury={dashboardProps.treasury}
+          debtLimit={dashboardProps.debtLimit}
+          onBuild={(id) => { handleBuild(id); setActiveModal(null); }}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === 'policies' && dashboardProps && (
+        <PoliciesModal
+          allPolicies={dashboardProps.allPolicies}
+          policySlots={dashboardProps.policySlots}
+          policyChangesLeft={dashboardProps.policyChangesLeft}
+          onTogglePolicy={(id) => { handleTogglePolicy(id); setActiveModal(null); }}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === 'research' && dashboardProps && (
+        <ResearchModal
+          techTree={dashboardProps.techTree}
+          researchingTech={dashboardProps.researchingTech}
+          treasury={dashboardProps.treasury}
+          debtLimit={dashboardProps.debtLimit}
+          onResearch={(id) => { handleResearch(id); setActiveModal(null); }}
+          onCancelResearch={() => { handleCancelResearch(); setActiveModal(null); }}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* OLD DASHBOARD — kept for reference, no longer rendered */}
+      {false && (
+        <div className="dashboard-layout-old">
         <div className="main-content">
           <div className="content-grid">
           <div className="vibes-banner">
@@ -720,6 +1114,7 @@ function App() {
               <div className="vibes-field"><span className="vibes-label">Vibe</span> <span className="vibes-val vibes-val-vibe">{gameState.vibes?.tierName || 'Decent'}</span></div>
               <div className="vibes-field"><span className="vibes-label">Reputation</span> <span className="vibes-val vibes-val-rep">{gameState.vibes?.branchLabel || gameState.vibes?.reputation || 'Obscure'}</span></div>
               <div className="vibes-field"><span className="vibes-label">Level</span> <span className="vibes-val vibes-val-level">{(gameState.coverageData?.tier || 0) + 1}</span></div>
+              <div className="vibes-field"><span className="vibes-label">Score</span> <span className="vibes-val vibes-val-score">{(gameState.scoring?.totalScore || 0).toLocaleString()}</span></div>
             </div>
           </div>
 
@@ -939,8 +1334,8 @@ function App() {
                   {gameState.activePolicies.map(pId => {
                     const policy = (gameState.policyDefinitions || []).find(p => p.id === pId);
                     if (!policy) return null;
-                    const pct = Math.round((gameState.policyConfig?.excludePercent || 0.25) * 100);
-                    const desc = policy.description.replace('{pct}', pct);
+                    const pct = Math.round((gameState.policyConfig?.[pId]?.excludePercent || 0.25) * 100);
+                    const desc = policy.description;
                     return (
                       <div key={pId} className="stat has-tooltip">
                         <span className="stat-label">{policy.name}</span>
@@ -1312,7 +1707,7 @@ function App() {
       )}
 
       {view === 'devtools' && editConfig && (
-        <div className="dev-tools">
+        <div className="dev-tools" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
           <div className="dev-tools-header">
             <h2>Developer Tools</h2>
             <div className="dev-tools-buttons">
@@ -1438,113 +1833,128 @@ function App() {
 
             <div className="config-section">
               <h3>Level Progression</h3>
-              <p className="config-hint">As your commune grows, higher levels unlock better output from buildings and adjust health metric expectations.</p>
-              <div className="tier-grid">
-                {[0, 1, 2, 3, 4, 5].map(i => {
-                  const brackets = gameState?.tierConfig?.brackets || [6, 12, 20, 50, 100];
-                  const outputMults = gameState?.tierConfig?.outputMults || [1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
-                  const healthMults = gameState?.tierConfig?.healthMults || [1.0, 1.1, 1.2, 1.35, 1.5, 1.7];
-                  const popRange = i === 0 ? `1-${brackets[0]}` : i === 5 ? `${brackets[4]+1}+` : `${brackets[i-1]+1}-${brackets[i]}`;
-                  return (
-                    <div key={i} className="tier-row">
-                      <span className="tier-label">Level {i + 1}</span>
-                      <span className="tier-pop">{popRange} pop</span>
-                      <span className="tier-mult">Output: {outputMults[i]}x</span>
-                      <span className="tier-mult">Health: {healthMults[i]}x</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <p className="config-hint">Population tiers scale output and health expectations. Brackets are readonly; multipliers are tunable.</p>
+              <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem'}}>
+                <thead>
+                  <tr style={{borderBottom: '1px solid #4a4a4a', fontSize: '0.7rem', color: '#9a9690'}}>
+                    <th style={{textAlign: 'left', padding: '2px 4px 4px 0', fontWeight: 400}}>Level</th>
+                    <th style={{textAlign: 'left', padding: '2px 4px 4px', fontWeight: 400}}>Pop</th>
+                    <th style={{textAlign: 'right', padding: '2px 4px 4px', fontWeight: 400}}>Output</th>
+                    <th style={{textAlign: 'right', padding: '2px 4px 4px', fontWeight: 400}}>Health</th>
+                    <th style={{textAlign: 'right', padding: '2px 0 4px 4px', fontWeight: 400}}>Q.Cap</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0, 1, 2, 3, 4, 5].map(i => {
+                    const brackets = editConfig?.tierConfig?.brackets || [6, 12, 20, 50, 100];
+                    const popRange = i === 0 ? `1-${brackets[0]}` : i === 5 ? `${brackets[4]+1}+` : `${brackets[i-1]+1}-${brackets[i]}`;
+                    const updateTierArr = (field, idx, val) => {
+                      const arr = [...(editConfig?.tierConfig?.[field] || [])];
+                      arr[idx] = val;
+                      setEditConfig(prev => ({...prev, tierConfig: {...(prev.tierConfig || {}), [field]: arr}}));
+                    };
+                    return (
+                      <tr key={i} style={{borderBottom: '1px solid #2d3748'}}>
+                        <td style={{padding: '3px 4px 3px 0', color: '#D4A035'}}>L{i + 1}</td>
+                        <td style={{padding: '3px 4px', color: '#6a6866'}}>{popRange}</td>
+                        <td style={{padding: '3px 4px', textAlign: 'right'}}>
+                          <input type="number" step="0.05" min="0.1" className="config-table-input"
+                            value={editConfig?.tierConfig?.outputMults?.[i] ?? [1, 1.15, 1.3, 1.5, 1.75, 2][i]}
+                            onChange={(e) => updateTierArr('outputMults', i, parseFloat(e.target.value) || 1)} />
+                        </td>
+                        <td style={{padding: '3px 4px', textAlign: 'right'}}>
+                          <input type="number" step="0.05" min="0.1" className="config-table-input"
+                            value={editConfig?.tierConfig?.healthMults?.[i] ?? [1, 1.1, 1.2, 1.35, 1.5, 1.7][i]}
+                            onChange={(e) => updateTierArr('healthMults', i, parseFloat(e.target.value) || 1)} />
+                        </td>
+                        <td style={{padding: '3px 0 3px 4px', textAlign: 'right'}}>
+                          <input type="number" step="1" min="1" max="10" className="config-table-input" style={{width: '45px'}}
+                            value={editConfig?.tierConfig?.qualityCaps?.[i] ?? [2, 3, 4, 5, 5, 5][i]}
+                            onChange={(e) => updateTierArr('qualityCaps', i, parseInt(e.target.value) || 1)} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             <div className="config-section" style={{gridColumn: '1 / -1'}}>
               <h3>Vibes & Reputation</h3>
-              <div style={{display: 'flex', gap: '8px', marginBottom: '10px'}}>
-                <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
-                  <label>Balanced spread</label>
-                  <input type="number" step="0.01" value={gameState?.vibesConfig?.balancedThreshold || 0.18} readOnly />
-                </div>
-                <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
-                  <label>Strong imbalance</label>
-                  <input type="number" step="0.01" value={gameState?.vibesConfig?.strongImbalanceThreshold || 0.30} readOnly />
-                </div>
-              </div>
               <div style={{display: 'flex', gap: '16px'}}>
                 <div style={{flex: 1}}>
-                  <label style={{fontSize: '0.75rem', color: '#a0aec0', display: 'block', marginBottom: '4px'}}>Vibes Tier Ladder</label>
+                  <label style={{fontSize: '0.75rem', color: '#9a9690', display: 'block', marginBottom: '4px'}}>Vibes Tier Ladder</label>
                   <div className="tier-ladder-list">
-                    {(gameState?.vibesConfig?.tierThresholds || [
-                      { name: 'Shambles', min: 0, max: 0.15 },
-                      { name: 'Rough', min: 0.15, max: 0.25 },
-                      { name: 'Scrappy', min: 0.25, max: 0.35 },
-                      { name: 'Fine', min: 0.35, max: 0.45 },
-                      { name: 'Good', min: 0.45, max: 0.55 },
-                      { name: 'Lovely', min: 0.55, max: 0.65 },
-                      { name: 'Thriving', min: 0.65, max: 0.75 },
-                      { name: 'Wonderful', min: 0.75, max: 0.85 },
-                      { name: 'Glorious', min: 0.85, max: 0.95 },
-                      { name: 'Utopia', min: 0.95, max: 1.01 }
-                    ]).map((tier, idx) => (
+                    {(editConfig?.vibes?.tierThresholds || []).map((tier, idx) => (
                       <div key={idx} className="tier-ladder-item">
                         <span className="tier-rank">{idx + 1}.</span>
-                        <span className="tier-name">{tier.name}</span>
+                        <input className="config-table-input" style={{width: '80px', textAlign: 'left'}}
+                          value={tier.name}
+                          onChange={(e) => {
+                            const tiers = [...(editConfig.vibes.tierThresholds)];
+                            tiers[idx] = { ...tiers[idx], name: e.target.value };
+                            setEditConfig({...editConfig, vibes: {...editConfig.vibes, tierThresholds: tiers}});
+                          }} />
                         <span className="tier-range">{Math.round(tier.min * 100)}-{Math.round(tier.max * 100)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div style={{flex: 1}}>
-                  <label style={{fontSize: '0.75rem', color: '#a0aec0', display: 'block', marginBottom: '4px'}}>Fame Levels (Vibes + pop level)</label>
+                  <label style={{fontSize: '0.75rem', color: '#9a9690', display: 'block', marginBottom: '4px'}}>Fame Levels (Vibes + pop level)</label>
                   <div className="tier-ladder-list">
-                    {[
-                      { name: 'Obscure', min: 0, max: 20, tierLabel: 'Any' },
-                      { name: 'Reputable', min: 20, max: 40, tierLabel: 'Level 2+' },
-                      { name: 'Aspirational', min: 40, max: 60, tierLabel: 'Level 3+' },
-                      { name: 'Famous', min: 60, max: 80, tierLabel: 'Level 4+' },
-                      { name: 'Mythical', min: 80, max: 100, tierLabel: 'Level 5+' }
-                    ].map((f, idx) => (
+                    {(editConfig?.vibes?.fameLevels || []).map((f, idx) => (
                       <div key={idx} className="tier-ladder-item">
                         <span className="tier-rank">{idx + 1}.</span>
-                        <span className="tier-name">{f.name}</span>
+                        <input className="config-table-input" style={{width: '90px', textAlign: 'left'}}
+                          value={f.name}
+                          onChange={(e) => {
+                            const levels = [...(editConfig.vibes.fameLevels)];
+                            levels[idx] = { ...levels[idx], name: e.target.value };
+                            setEditConfig({...editConfig, vibes: {...editConfig.vibes, fameLevels: levels}});
+                          }} />
                         <span className="tier-range" style={{minWidth: '36px'}}>{f.min}-{f.max}</span>
-                        <span style={{fontSize: '0.65rem', color: '#718096', marginLeft: '4px'}}>{f.tierLabel}</span>
+                        <span style={{fontSize: '0.65rem', color: '#6a6866', marginLeft: '4px'}}>{f.minTier === 0 ? 'Any' : `Level ${f.minTier + 1}+`}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div style={{flex: 1}}>
-                  <label style={{fontSize: '0.75rem', color: '#a0aec0', display: 'block', marginBottom: '4px'}}>Identity Labels (when imbalanced)</label>
+                  <label style={{fontSize: '0.75rem', color: '#9a9690', display: 'block', marginBottom: '4px'}}>Identity Labels (when imbalanced)</label>
+                  <div style={{fontSize: '0.65rem', color: '#6a6866', marginBottom: '6px'}}>
+                    Spread &lt; {editConfig?.vibes?.balancedThreshold || 0.18} = Balanced | {editConfig?.vibes?.balancedThreshold || 0.18}–{editConfig?.vibes?.strongImbalanceThreshold || 0.30} = Mild | &gt; {editConfig?.vibes?.strongImbalanceThreshold || 0.30} = Strong
+                  </div>
                   <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem'}}>
                     <thead>
-                      <tr style={{borderBottom: '1px solid #4a5568'}}>
-                        <th style={{textAlign: 'left', padding: '4px 6px', color: '#718096', fontWeight: 500}}>Condition</th>
-                        <th style={{textAlign: 'left', padding: '4px 6px', color: '#718096', fontWeight: 500}}>Mild</th>
-                        <th style={{textAlign: 'left', padding: '4px 6px', color: '#718096', fontWeight: 500}}>Strong</th>
+                      <tr style={{borderBottom: '1px solid #4a4a4a'}}>
+                        <th style={{textAlign: 'left', padding: '4px 6px', color: '#6a6866', fontWeight: 500}}>Condition</th>
+                        <th style={{textAlign: 'left', padding: '4px 6px', color: '#D4A035', fontWeight: 500}}>Mild</th>
+                        <th style={{textAlign: 'left', padding: '4px 6px', color: '#c47e7e', fontWeight: 500}}>Strong</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(() => {
-                        const labels = gameState?.vibesConfig?.branchLabels || {
-                          highPartytime: { mild: 'Party House', strong: 'Party Mansion' },
-                          highProductivity: { mild: 'Grind House', strong: 'Sweat Shop' },
-                          highLivingStandards: { mild: 'Showhome', strong: 'Dolls House' },
-                          lowLivingStandards: { mild: 'Shanty Town', strong: 'Slum' },
-                          lowProductivity: { mild: 'Decadent', strong: 'Chaotic' },
-                          lowPartytime: { mild: 'Low Energy', strong: 'Dead' }
-                        };
+                        const labels = editConfig?.vibes?.branchLabels || {};
                         const rows = [
-                          { key: 'highPartytime', label: 'High Partytime', color: '#b794f4' },
-                          { key: 'highProductivity', label: 'High Productivity', color: '#4299e1' },
-                          { key: 'highLivingStandards', label: 'High Living Standards', color: '#4fd1c5' },
-                          { key: 'lowLivingStandards', label: 'Low Living Standards', color: '#4fd1c5' },
-                          { key: 'lowProductivity', label: 'Low Productivity', color: '#4299e1' },
-                          { key: 'lowPartytime', label: 'Low Partytime', color: '#b794f4' }
+                          { key: 'highLivingStandards', label: 'High LS', color: '#8cc4a0' },
+                          { key: 'lowLivingStandards', label: 'Low LS', color: '#8cc4a0' },
+                          { key: 'highProductivity', label: 'High PR', color: '#7eaac4' },
+                          { key: 'lowProductivity', label: 'Low PR', color: '#7eaac4' },
+                          { key: 'highPartytime', label: 'High PT', color: '#D4A035' },
+                          { key: 'lowPartytime', label: 'Low PT', color: '#D4A035' }
                         ];
+                        const updateLabel = (key, severity, val) => {
+                          const bl = {...(editConfig.vibes.branchLabels)};
+                          bl[key] = { ...bl[key], [severity]: val };
+                          setEditConfig({...editConfig, vibes: {...editConfig.vibes, branchLabels: bl}});
+                        };
                         return rows.map(r => (
-                          <tr key={r.key} style={{borderBottom: '1px solid #1a202c'}}>
+                          <tr key={r.key} style={{borderBottom: '1px solid #2d3748'}}>
                             <td style={{padding: '4px 6px', color: r.color}}>{r.label}</td>
-                            <td style={{padding: '4px 6px', color: '#ed8936'}}>{labels[r.key]?.mild}</td>
-                            <td style={{padding: '4px 6px', color: '#f56565'}}>{labels[r.key]?.strong}</td>
+                            <td style={{padding: '2px 4px'}}><input className="config-table-input" style={{width: '100%', textAlign: 'left', color: '#D4A035'}}
+                              value={labels[r.key]?.mild || ''} onChange={(e) => updateLabel(r.key, 'mild', e.target.value)} /></td>
+                            <td style={{padding: '2px 4px'}}><input className="config-table-input" style={{width: '100%', textAlign: 'left', color: '#c47e7e'}}
+                              value={labels[r.key]?.strong || ''} onChange={(e) => updateLabel(r.key, 'strong', e.target.value)} /></td>
                           </tr>
                         ));
                       })()}
@@ -1746,34 +2156,27 @@ function App() {
                   <div className="primitive-info">
                     <span className="info-label">Ratio:</span> max of (beds, bath, kitchen, living) capacity ratios
                   </div>
-                  <div className="config-field" style={{marginBottom: '6px'}}>
-                    <label>Base Mult</label>
-                    <input type="number" step="1" min="1" value={editConfig?.primitives?.crowding?.baseMult ?? 50}
-                      onChange={(e) => updatePrimitiveConfig('crowding', 'baseMult', parseInt(e.target.value) || 50)} />
-                  </div>
-                  <div className="penalty-toggle">
-                    <label className="toggle-label">
-                      <input type="checkbox" checked={editConfig?.primitives?.crowding?.useCustomPenalty ?? false}
-                        onChange={(e) => updatePrimitiveConfig('crowding', 'useCustomPenalty', e.target.checked)} />
-                      Custom Penalty K/P
-                    </label>
-                    {editConfig?.primitives?.crowding?.useCustomPenalty && (
-                      <div className="penalty-fields">
-                        <div className="config-field">
-                          <label>k</label>
-                          <input type="number" step="0.1" value={editConfig?.primitives?.crowding?.penaltyK ?? 2}
-                            onChange={(e) => updatePrimitiveConfig('crowding', 'penaltyK', parseFloat(e.target.value))} />
-                        </div>
-                        <div className="config-field">
-                          <label>p</label>
-                          <input type="number" step="0.1" value={editConfig?.primitives?.crowding?.penaltyP ?? 2}
-                            onChange={(e) => updatePrimitiveConfig('crowding', 'penaltyP', parseFloat(e.target.value))} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Affects:</span> Living Standards, Productivity
+                  <div className="primitive-controls">
+                    <div className="config-field">
+                      <label>baseMult</label>
+                      <input type="number" step="1" min="1" value={editConfig?.primitives?.crowding?.baseMult ?? 50}
+                        onChange={(e) => updatePrimitiveConfig('crowding', 'baseMult', parseInt(e.target.value) || 50)} />
+                    </div>
+                    <div className="config-field">
+                      <label>shareTolCoeff</label>
+                      <input type="number" step="0.05" value={editConfig?.primitives?.crowding?.shareTolCoeff ?? 0.25}
+                        onChange={(e) => updatePrimitiveConfig('crowding', 'shareTolCoeff', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="config-field">
+                      <label>penaltyK</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.crowding?.penaltyK ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('crowding', 'penaltyK', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="config-field">
+                      <label>penaltyP</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.crowding?.penaltyP ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('crowding', 'penaltyP', parseFloat(e.target.value))} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -1810,30 +2213,16 @@ function App() {
                         onChange={(e) => updatePrimitiveConfig('noise', 'considMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
-                  <div className="penalty-toggle">
-                    <label className="toggle-label">
-                      <input type="checkbox" checked={editConfig?.primitives?.noise?.useCustomPenalty ?? false}
-                        onChange={(e) => updatePrimitiveConfig('noise', 'useCustomPenalty', e.target.checked)} />
-                      Custom Penalty K/P
-                    </label>
-                    {editConfig?.primitives?.noise?.useCustomPenalty && (
-                      <div className="penalty-fields">
-                        <div className="config-field">
-                          <label>k</label>
-                          <input type="number" step="0.1" value={editConfig?.primitives?.noise?.penaltyK ?? 2}
-                            onChange={(e) => updatePrimitiveConfig('noise', 'penaltyK', parseFloat(e.target.value))} />
-                        </div>
-                        <div className="config-field">
-                          <label>p</label>
-                          <input type="number" step="0.1" value={editConfig?.primitives?.noise?.penaltyP ?? 2}
-                            onChange={(e) => updatePrimitiveConfig('noise', 'penaltyP', parseFloat(e.target.value))} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Living Room (noiseMult: {gameState?.buildings?.find(b => b.id === 'living_room')?.noiseMult ?? 1.0})
-                  </div>
+                    <div className="config-field">
+                      <label>penaltyK</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.noise?.penaltyK ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('noise', 'penaltyK', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="config-field">
+                      <label>penaltyP</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.noise?.penaltyP ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('noise', 'penaltyP', parseFloat(e.target.value))} />
+                    </div>
                 </div>
               )}
             </div>
@@ -1847,11 +2236,6 @@ function App() {
               {expandedPrimitives.nutrition && (
                 <div className="primitive-body">
                   <div className="formula-display">supply = min(N,cap) × outputRate × levelMult × quality × (1 + skillMult × cookSkill) × budgetMult</div>
-                  <div className="coverage-stats">
-                    <span>Supply: {gameState?.coverageData?.nutrition?.supply?.toFixed(1) || 0}</span>
-                    <span>Demand: {gameState?.coverageData?.nutrition?.demand?.toFixed(1) || 0}</span>
-                    <span>Ratio: {gameState?.coverageData?.nutrition?.ratio?.toFixed(2) || 1}x</span>
-                  </div>
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>outputRate</label>
@@ -1869,9 +2253,6 @@ function App() {
                         onChange={(e) => updatePrimitiveConfig('nutrition', 'skillMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Kitchen (cap: {gameState?.buildings?.find(b => b.id === 'kitchen')?.capacity ?? 20}, foodMult: {gameState?.buildings?.find(b => b.id === 'kitchen')?.foodMult ?? 1.0})
-                  </div>
                 </div>
               )}
             </div>
@@ -1885,11 +2266,6 @@ function App() {
               {expandedPrimitives.fun && (
                 <div className="primitive-body">
                   <div className="formula-display">supply = min(N,cap) × outputRate × levelMult × quality × (1 + skillMult × avgSocioStamina) × policyMult × budgetMult</div>
-                  <div className="coverage-stats">
-                    <span>Supply: {gameState?.coverageData?.fun?.supply?.toFixed(1) || 0}</span>
-                    <span>Demand: {gameState?.coverageData?.fun?.demand?.toFixed(1) || 0}</span>
-                    <span>Ratio: {gameState?.coverageData?.fun?.ratio?.toFixed(2) || 1}x</span>
-                  </div>
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>outputRate</label>
@@ -1907,9 +2283,6 @@ function App() {
                         onChange={(e) => updatePrimitiveConfig('fun', 'skillMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Living Room (cap: {gameState?.buildings?.find(b => b.id === 'living_room')?.capacity ?? 20}, funMult: {gameState?.buildings?.find(b => b.id === 'living_room')?.funMult ?? 1.0})
-                  </div>
                 </div>
               )}
             </div>
@@ -1923,11 +2296,6 @@ function App() {
               {expandedPrimitives.drive && (
                 <div className="primitive-body">
                   <div className="formula-display">supply = min(N,cap) × outputRate × levelMult × quality × (1 + skillMult × workEthic) × budgetMult</div>
-                  <div className="coverage-stats">
-                    <span>Supply: {gameState?.coverageData?.drive?.supply?.toFixed(1) || 0}</span>
-                    <span>Demand: {gameState?.coverageData?.drive?.demand?.toFixed(1) || 0}</span>
-                    <span>Ratio: {gameState?.coverageData?.drive?.ratio?.toFixed(2) || 1}x</span>
-                  </div>
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>outputRate</label>
@@ -1944,9 +2312,6 @@ function App() {
                       <input type="number" step="0.1" value={editConfig?.primitives?.drive?.skillMult ?? 0.3}
                         onChange={(e) => updatePrimitiveConfig('drive', 'skillMult', parseFloat(e.target.value))} />
                     </div>
-                  </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Living Room (quality affects focus)
                   </div>
                 </div>
               )}
@@ -1979,9 +2344,16 @@ function App() {
                       <input type="number" step="0.1" value={editConfig?.primitives?.cleanliness?.skillMult ?? 0.1}
                         onChange={(e) => updatePrimitiveConfig('cleanliness', 'skillMult', parseFloat(e.target.value))} />
                     </div>
-                  </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Bathroom (quality & cleanMult affect cleaning rate)
+                    <div className="config-field">
+                      <label>penaltyK</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.cleanliness?.penaltyK ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('cleanliness', 'penaltyK', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="config-field">
+                      <label>penaltyP</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.cleanliness?.penaltyP ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('cleanliness', 'penaltyP', parseFloat(e.target.value))} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -2008,30 +2380,16 @@ function App() {
                         onChange={(e) => updatePrimitiveConfig('maintenance', 'repairBase', parseFloat(e.target.value))} />
                     </div>
                   </div>
-                  <div className="penalty-toggle">
-                    <label className="toggle-label">
-                      <input type="checkbox" checked={editConfig?.primitives?.maintenance?.useCustomPenalty ?? false}
-                        onChange={(e) => updatePrimitiveConfig('maintenance', 'useCustomPenalty', e.target.checked)} />
-                      Custom Penalty K/P
-                    </label>
-                    {editConfig?.primitives?.maintenance?.useCustomPenalty && (
-                      <div className="penalty-fields">
-                        <div className="config-field">
-                          <label>k</label>
-                          <input type="number" step="0.1" value={editConfig?.primitives?.maintenance?.penaltyK ?? 2}
-                            onChange={(e) => updatePrimitiveConfig('maintenance', 'penaltyK', parseFloat(e.target.value))} />
-                        </div>
-                        <div className="config-field">
-                          <label>p</label>
-                          <input type="number" step="0.1" value={editConfig?.primitives?.maintenance?.penaltyP ?? 2}
-                            onChange={(e) => updatePrimitiveConfig('maintenance', 'penaltyP', parseFloat(e.target.value))} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Utility Closet (repairMult: {gameState?.buildings?.find(b => b.id === 'utility_closet')?.repairMult ?? 1.0})
-                  </div>
+                    <div className="config-field">
+                      <label>penaltyK</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.maintenance?.penaltyK ?? 4}
+                        onChange={(e) => updatePrimitiveConfig('maintenance', 'penaltyK', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="config-field">
+                      <label>penaltyP</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.maintenance?.penaltyP ?? 3}
+                        onChange={(e) => updatePrimitiveConfig('maintenance', 'penaltyP', parseFloat(e.target.value))} />
+                    </div>
                 </div>
               )}
             </div>
@@ -2078,9 +2436,16 @@ function App() {
                       <input type="number" step="0.001" value={editConfig?.primitives?.fatigue?.driveFatigueCoeff ?? 0.005}
                         onChange={(e) => updatePrimitiveConfig('fatigue', 'driveFatigueCoeff', parseFloat(e.target.value))} />
                     </div>
-                  </div>
-                  <div className="linked-buildings">
-                    <span className="info-label">Buildings:</span> Bedroom (recoveryMult: {gameState?.buildings?.find(b => b.id === 'bedroom')?.recoveryMult ?? 1.0})
+                    <div className="config-field">
+                      <label>penaltyK</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.fatigue?.penaltyK ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('fatigue', 'penaltyK', parseFloat(e.target.value))} />
+                    </div>
+                    <div className="config-field">
+                      <label>penaltyP</label>
+                      <input type="number" step="0.1" value={editConfig?.primitives?.fatigue?.penaltyP ?? 2}
+                        onChange={(e) => updatePrimitiveConfig('fatigue', 'penaltyP', parseFloat(e.target.value))} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -2150,19 +2515,29 @@ function App() {
                   <tr style={{borderBottom: '1px solid #4a5568', fontSize: '0.7rem', color: '#a0aec0'}}>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px 0', fontWeight: 400}}>Name</th>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px', fontWeight: 400}}>Effect</th>
+                    <th style={{textAlign: 'right', padding: '2px 8px 4px', fontWeight: 400}}>Exclude %</th>
                     <th style={{textAlign: 'right', padding: '2px 0 4px 8px', fontWeight: 400}}>Unlock</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(gameState.policyDefinitions || []).map(policy => {
                     const techUnlock = policy.techRequired ? (gameState.techTree || []).find(t => t.id === policy.techRequired) : null;
-                    const pct = Math.round((gameState.policyConfig?.excludePercent || 0.25) * 100);
                     const ocadoPct = gameState.techConfig?.ocado?.effectPercent || 15;
-                    const desc = policy.description.replace('{pct}', pct).replace('{ocadoPct}', ocadoPct);
+                    const desc = policy.description.replace('{ocadoPct}', ocadoPct);
                     return (
                       <tr key={policy.id} style={{borderBottom: '1px solid #2d3748'}}>
                         <td style={{padding: '4px 8px 4px 0', whiteSpace: 'nowrap'}}>{policy.name}</td>
                         <td style={{padding: '4px 8px', color: '#a0aec0', fontSize: '0.75rem'}}>{desc}</td>
+                        <td style={{padding: '4px 8px', textAlign: 'right'}}>
+                          {policy.type === 'exclude_worst' ? (
+                            <input type="number" step="0.05" min="0" max="1" className="config-table-input"
+                              value={editConfig?.policyConfig?.[policy.id]?.excludePercent ?? 0.25}
+                              onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), [policy.id]: {...(prev.policyConfig?.[policy.id] || {}), excludePercent: parseFloat(e.target.value)}}}))}
+                            />
+                          ) : (
+                            <span style={{color: '#6a6866', fontSize: '0.75rem'}}>—</span>
+                          )}
+                        </td>
                         <td style={{padding: '4px 0 4px 8px', textAlign: 'right', whiteSpace: 'nowrap', color: techUnlock ? '#ecc94b' : '#48bb78', fontSize: '0.75rem'}}>
                           {techUnlock ? techUnlock.name : 'Default'}
                         </td>
@@ -2171,6 +2546,145 @@ function App() {
                   })}
                 </tbody>
               </table>
+              <div style={{borderTop: '1px solid #4a4a4a', marginTop: '8px', paddingTop: '8px'}}>
+                <div style={{fontSize: '0.7rem', color: '#9a9690', marginBottom: '6px'}}>Fun penalty</div>
+                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                  <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
+                    <label title="Number of active policies before Fun penalty applies">Fun threshold</label>
+                    <input type="number" step="1" min="1" style={{width: '70px'}}
+                      value={editConfig?.policyConfig?.funPenalty?.threshold ?? 3}
+                      onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), threshold: parseInt(e.target.value)}}}))}
+                    />
+                  </div>
+                  <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
+                    <label title="Penalty curve steepness for Fun reduction">Fun K</label>
+                    <input type="number" step="0.05" style={{width: '70px'}}
+                      value={editConfig?.policyConfig?.funPenalty?.K ?? 0.15}
+                      onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), K: parseFloat(e.target.value)}}}))}
+                    />
+                  </div>
+                  <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
+                    <label title="Penalty curve exponent for Fun reduction">Fun P</label>
+                    <input type="number" step="0.1" style={{width: '70px'}}
+                      value={editConfig?.policyConfig?.funPenalty?.P ?? 1.5}
+                      onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), P: parseFloat(e.target.value)}}}))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="dev-tools-grid three-col">
+            <div className="config-section">
+              <h3>Scoring</h3>
+              <p style={{color: '#9a9690', fontSize: '0.7rem', marginBottom: '8px', lineHeight: '1.5'}}>
+                Weekly points are calculated each week-end:
+              </p>
+              <div style={{background: 'rgba(212,160,53,0.10)', padding: '8px', marginBottom: '10px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#D4A035'}}>
+                pts = floor(vibes × popScale × harmony × scale)
+              </div>
+              <div style={{fontSize: '0.7rem', color: '#9a9690', lineHeight: '1.6', marginBottom: '10px'}}>
+                <div><strong style={{color: '#e2ddd4'}}>vibes</strong> — overall vibes score (0–100)</div>
+                <div><strong style={{color: '#e2ddd4'}}>popScale</strong> — multiplier from population bracket lookup</div>
+                <div><strong style={{color: '#e2ddd4'}}>harmony</strong> = harmonyFloor + harmonyWeight × (min/max health metric)</div>
+                <div style={{marginLeft: '12px', color: '#6a6866'}}>Rewards balanced LS/PR/PT; ranges {(editConfig?.scoreConfig?.weeklyFormula?.harmonyFloor ?? 0.7).toFixed(1)}–{((editConfig?.scoreConfig?.weeklyFormula?.harmonyFloor ?? 0.7) + (editConfig?.scoreConfig?.weeklyFormula?.harmonyWeight ?? 0.3)).toFixed(1)}</div>
+                <div><strong style={{color: '#e2ddd4'}}>scale</strong> — global multiplier for point values</div>
+              </div>
+              <div style={{borderTop: '1px solid #4a4a4a', paddingTop: '8px'}}>
+                <div style={{fontSize: '0.7rem', color: '#9a9690', marginBottom: '6px'}}>Formula parameters</div>
+                {[
+                  { field: 'scale', label: 'Scale', step: 1, def: 10 },
+                  { field: 'harmonyFloor', label: 'Harmony floor', step: 0.05, def: 0.7 },
+                  { field: 'harmonyWeight', label: 'Harmony weight', step: 0.05, def: 0.3 }
+                ].map(p => (
+                  <div key={p.field} className="config-field" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                    <label style={{flex: 1}}>{p.label}</label>
+                    <input type="number" step={p.step} style={{width: '70px'}} value={editConfig?.scoreConfig?.weeklyFormula?.[p.field] ?? p.def} onChange={(e) => {
+                      setEditConfig(prev => ({
+                        ...prev,
+                        scoreConfig: {
+                          ...prev.scoreConfig,
+                          weeklyFormula: { ...(prev.scoreConfig?.weeklyFormula || {}), [p.field]: parseFloat(e.target.value) }
+                        }
+                      }));
+                    }} />
+                  </div>
+                ))}
+                <div style={{fontSize: '0.7rem', color: '#9a9690', marginTop: '8px', marginBottom: '4px'}}>Population scale brackets</div>
+                {(editConfig?.scoreConfig?.weeklyFormula?.popScaleBrackets || [
+                  { maxN: 4, mult: 1.0 }, { maxN: 8, mult: 1.5 }, { maxN: 12, mult: 2.0 }, { maxN: Infinity, mult: 3.0 }
+                ]).map((b, i) => (
+                  <div key={i} className="config-field" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                    <label style={{flex: 1}}>≤ {b.maxN === Infinity || b.maxN === null ? '∞' : (
+                      <input type="number" step="1" min="1" style={{width: '50px', display: 'inline'}} value={b.maxN} onChange={(e) => {
+                        const brackets = [...(editConfig?.scoreConfig?.weeklyFormula?.popScaleBrackets || [])];
+                        brackets[i] = { ...brackets[i], maxN: parseInt(e.target.value) || 1 };
+                        setEditConfig(prev => ({
+                          ...prev,
+                          scoreConfig: {
+                            ...prev.scoreConfig,
+                            weeklyFormula: { ...(prev.scoreConfig?.weeklyFormula || {}), popScaleBrackets: brackets }
+                          }
+                        }));
+                      }} />
+                    )} residents</label>
+                    <input type="number" step="0.1" min="0.1" style={{width: '70px'}} value={b.mult} onChange={(e) => {
+                      const brackets = [...(editConfig?.scoreConfig?.weeklyFormula?.popScaleBrackets || [])];
+                      brackets[i] = { ...brackets[i], mult: parseFloat(e.target.value) || 0.1 };
+                      setEditConfig(prev => ({
+                        ...prev,
+                        scoreConfig: {
+                          ...prev.scoreConfig,
+                          weeklyFormula: { ...(prev.scoreConfig?.weeklyFormula || {}), popScaleBrackets: brackets }
+                        }
+                      }));
+                    }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="config-section" style={{gridColumn: 'span 2', display: 'flex', flexDirection: 'column', maxHeight: '520px'}}>
+              <h3 style={{flexShrink: 0}}>Milestones</h3>
+              <div style={{flex: 1, minHeight: 0, overflowY: 'auto'}}>
+              <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem'}}>
+                <thead>
+                  <tr style={{borderBottom: '1px solid #4a4a4a', fontSize: '0.7rem', color: '#9a9690'}}>
+                    <th style={{textAlign: 'left', padding: '2px 8px 4px 0', fontWeight: 400}}>Badge</th>
+                    <th style={{textAlign: 'left', padding: '2px 8px 4px', fontWeight: 400}}>Category</th>
+                    <th style={{textAlign: 'left', padding: '2px 8px 4px', fontWeight: 400}}>Condition</th>
+                    <th style={{textAlign: 'right', padding: '2px 8px 4px', fontWeight: 400}}>Points</th>
+                    <th style={{textAlign: 'left', padding: '2px 0 4px 8px', fontWeight: 400}}>Flavour</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const earned = new Set((gameState.scoring?.earnedMilestones || []).map(m => m.id));
+                    const allDefs = gameState.milestoneDefinitions || [];
+                    return allDefs.filter(m => !earned.has(m.id)).map(m => {
+                      const c = m.condition || {};
+                      let condStr = c.type || '';
+                      if (c.min !== undefined) condStr += ` ≥ ${c.min}`;
+                      if (c.name) condStr += `: ${c.name}`;
+                      if (c.label) condStr += `: ${c.label}`;
+                      if (c.techId) condStr += `: ${c.techId}`;
+                      if (c.any) condStr += ' (any)';
+                      if (c.id) condStr += `: ${c.id}`;
+                      return (
+                        <tr key={m.id} style={{borderBottom: '1px solid #2d3748'}}>
+                          <td style={{padding: '4px 8px 4px 0', whiteSpace: 'nowrap'}}>{m.badgeName}</td>
+                          <td style={{padding: '4px 8px', color: '#9a9690', fontSize: '0.75rem'}}>{m.category}</td>
+                          <td style={{padding: '4px 8px', color: '#6a6866', fontSize: '0.7rem', fontFamily: 'monospace'}}>{condStr}</td>
+                          <td style={{padding: '4px 8px', textAlign: 'right', color: '#b07cc8'}}>{m.points}</td>
+                          <td style={{padding: '4px 0 4px 8px', color: '#6a6866', fontSize: '0.75rem'}}>{m.flavour}</td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+              </div>
             </div>
           </div>
 
@@ -2204,12 +2718,15 @@ function App() {
                             }
                           }));
                         };
+                        const unlockedBuilding = (gameState.buildings || []).find(b => b.techRequired === tech.id);
                         return (
                           <div key={tech.id} data-tech-id={tech.id} data-tech-level={tech.level} data-tech-parent={tech.parent || ''} style={{background: '#2d3748', borderRadius: '6px', padding: '8px 10px', border: `1px solid ${tech.available ? treeColor + '44' : '#4a556833'}`}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px'}}>
                               <span style={{fontWeight: 600, fontSize: '0.8rem', color: tech.available ? '#e2e8f0' : '#718096'}}>{tech.name}</span>
                               <span style={{fontSize: '0.6rem', background: treeColor + '22', color: treeColor, padding: '1px 6px', borderRadius: '4px', textTransform: 'capitalize'}}>{tech.type.replace('_', ' ')}</span>
                             </div>
+                            {unlockedBuilding && <div style={{fontSize: '0.65rem', color: '#b07cc8', marginBottom: '4px'}}>Unlocks: {unlockedBuilding.name}</div>}
+                            {!unlockedBuilding && (tech.type === 'building' || tech.type === 'upgrade') && <div style={{fontSize: '0.65rem', color: '#718096', marginBottom: '4px'}}>Building: TBC</div>}
                             {!tech.available && <div style={{fontSize: '0.65rem', color: '#718096', marginBottom: '6px'}}>Coming Soon</div>}
                             <div className="config-field" style={{marginBottom: '4px'}}>
                               <label style={{fontSize: '0.7rem'}}>Cost</label>
@@ -2232,38 +2749,6 @@ function App() {
                                   <input type="number" step="1" min="0"
                                     value={cfg.effectPercent ?? 0}
                                     onChange={(e) => updateTechCfg('effectPercent', parseInt(e.target.value) || 0)}
-                                  />
-                                </div>
-                              </>
-                            )}
-                            {tech.type === 'policy' && tech.id === 'chores_rota' && (
-                              <>
-                                <div className="config-field" style={{marginBottom: '4px'}}>
-                                  <label style={{fontSize: '0.7rem'}} title="Percentage of worst-performing residents excluded from stat average">Exclude %</label>
-                                  <input type="number" step="0.05" min="0" max="1"
-                                    value={editConfig?.policyConfig?.excludePercent ?? 0.25}
-                                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), excludePercent: parseFloat(e.target.value)}}))}
-                                  />
-                                </div>
-                                <div className="config-field" style={{marginBottom: '4px'}}>
-                                  <label style={{fontSize: '0.7rem'}} title="Number of active policies before Fun penalty applies">Fun threshold</label>
-                                  <input type="number" step="1" min="1"
-                                    value={editConfig?.policyConfig?.funPenalty?.threshold ?? 3}
-                                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), threshold: parseInt(e.target.value)}}}))}
-                                  />
-                                </div>
-                                <div className="config-field" style={{marginBottom: '4px'}}>
-                                  <label style={{fontSize: '0.7rem'}} title="Penalty curve steepness (K) for Fun reduction">Fun K</label>
-                                  <input type="number" step="0.05"
-                                    value={editConfig?.policyConfig?.funPenalty?.K ?? 0.15}
-                                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), K: parseFloat(e.target.value)}}}))}
-                                  />
-                                </div>
-                                <div className="config-field" style={{marginBottom: '0'}}>
-                                  <label style={{fontSize: '0.7rem'}} title="Penalty curve exponent (P) for Fun reduction">Fun P</label>
-                                  <input type="number" step="0.1"
-                                    value={editConfig?.policyConfig?.funPenalty?.P ?? 1.5}
-                                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), P: parseFloat(e.target.value)}}}))}
                                   />
                                 </div>
                               </>
@@ -2627,13 +3112,12 @@ function App() {
             )}
             <div className="policy-list">
               {(gameState.policyDefinitions || []).filter(policy => !policy.techRequired || gameState.researchedTechs?.includes(policy.techRequired)).length === 0 && (
-                <p style={{color: '#a0aec0', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0'}}>No policies available yet. Research technologies to unlock policies.</p>
+                <p style={{color: '#a0aec0', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0'}}>Research Technologies to unlock Policies for the Fort.</p>
               )}
               {(gameState.policyDefinitions || []).filter(policy => !policy.techRequired || gameState.researchedTechs?.includes(policy.techRequired)).map(policy => {
                 const isActive = (gameState.activePolicies || []).includes(policy.id);
-                const pct = Math.round((gameState.policyConfig?.excludePercent || 0.25) * 100);
                 const ocadoPct = gameState.techConfig?.ocado?.effectPercent || 15;
-                let desc = policy.description.replace('{pct}', pct).replace('{ocadoPct}', ocadoPct);
+                let desc = policy.description.replace('{ocadoPct}', ocadoPct);
                 return (
                   <div key={policy.id} className={`policy-card ${isActive ? 'active' : ''}`}>
                     <div className="policy-header">

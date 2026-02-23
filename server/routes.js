@@ -6,13 +6,14 @@ const express = require('express');
 const router = express.Router();
 
 const { state, SAVED_DEFAULTS_FILE } = require('./state');
-const { POLICY_DEFINITIONS, TECH_TREE, DEFAULT_BUILDINGS } = require('./config');
+const { POLICY_DEFINITIONS, TECH_TREE, DEFAULT_BUILDINGS, MILESTONE_DEFINITIONS } = require('./config');
 const {
   initializeGame,
   generateWeekCandidates,
   startSimulation,
   stopSimulation,
-  dismissWeeklyPause
+  dismissWeeklyPause,
+  addEvent
 } = require('./gameState');
 const { calculatePrimitives } = require('./primitives');
 const { calculateHealthMetrics } = require('./healthMetrics');
@@ -50,7 +51,9 @@ router.get('/api/state', (req, res) => {
     policyConfig: state.policyConfig,
     policyDefinitions: POLICY_DEFINITIONS,
     techConfig: state.techConfig,
-    techTree: TECH_TREE
+    scoreConfig: state.scoreConfig,
+    techTree: TECH_TREE,
+    milestoneDefinitions: MILESTONE_DEFINITIONS
   });
 });
 
@@ -208,8 +211,14 @@ router.get('/api/policy-config', (req, res) => {
 
 router.post('/api/policy-config', (req, res) => {
   const updates = req.body;
-  if (updates.excludePercent !== undefined) {
-    state.policyConfig.excludePercent = Math.max(0, Math.min(1, Number(updates.excludePercent) || 0.25));
+  // Per-policy config (e.g. cooking_rota.excludePercent, cleaning_rota.excludePercent)
+  for (const policyId of ['cooking_rota', 'cleaning_rota']) {
+    if (updates[policyId]) {
+      state.policyConfig[policyId] = { ...(state.policyConfig[policyId] || {}), ...updates[policyId] };
+      if (state.policyConfig[policyId].excludePercent !== undefined) {
+        state.policyConfig[policyId].excludePercent = Math.max(0, Math.min(1, Number(state.policyConfig[policyId].excludePercent) || 0.25));
+      }
+    }
   }
   if (updates.funPenalty) {
     state.policyConfig.funPenalty = { ...state.policyConfig.funPenalty, ...updates.funPenalty };
@@ -279,6 +288,22 @@ router.post('/api/tech-config', (req, res) => {
   res.json({ success: true, config: state.techConfig });
 });
 
+router.post('/api/score-config', (req, res) => {
+  const updates = req.body;
+  if (updates.weeklyFormula) {
+    const wf = { ...state.scoreConfig.weeklyFormula, ...updates.weeklyFormula };
+    // Restore Infinity from null (JSON doesn't support Infinity)
+    if (wf.popScaleBrackets) {
+      wf.popScaleBrackets = wf.popScaleBrackets.map(b => ({
+        ...b,
+        maxN: b.maxN === null ? Infinity : b.maxN
+      }));
+    }
+    state.scoreConfig.weeklyFormula = wf;
+  }
+  res.json({ success: true, config: state.scoreConfig });
+});
+
 router.post('/api/action/research', (req, res) => {
   if (!state.gameState.isPausedForWeeklyDecision) {
     return res.status(400).json({ error: 'Can only research during weekly planning' });
@@ -311,6 +336,8 @@ router.post('/api/action/research', (req, res) => {
   state.gameState.hasResearchedThisWeek = true;
 
   calculateWeeklyProjection();
+
+  addEvent('good', `Began researching: ${tech.name}.`);
 
   res.json({
     success: true,
@@ -532,6 +559,8 @@ router.post('/api/action/invite', (req, res) => {
   });
   state.gameState.hasRecruitedThisWeek = true;
 
+  addEvent('arrival', `${llama.name} has joined the herd.`);
+
   res.json({
     success: true,
     invited: llama.name,
@@ -584,6 +613,9 @@ function handleBuildAction(req, res) {
   building.count += 1;
   state.gameState.buildsThisWeek = (state.gameState.buildsThisWeek || 0) + 1;
   calculateWeeklyProjection();
+
+  addEvent('good', `Built: ${building.name}.`);
+
   res.json({
     success: true,
     building: building.name,

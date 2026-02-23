@@ -160,7 +160,8 @@ const DEFAULT_TIER_CONFIG = {
 };
 
 const DEFAULT_POLICY_CONFIG = {
-  "excludePercent": 0.25,
+  "cooking_rota": { "excludePercent": 0.25 },
+  "cleaning_rota": { "excludePercent": 0.25 },
   "funPenalty": {
     "threshold": 3,
     "K": 0.15,
@@ -172,7 +173,7 @@ const POLICY_DEFINITIONS = [
   {
     id: 'cooking_rota',
     name: 'Cooking Rota',
-    description: 'Remove worst {pct}% of residents\' cooking stats from the house resident multiplier',
+    description: 'Remove worst-performing residents\' cooking stats from the house average',
     primitive: 'nutrition',
     stat: 'cookingSkill',
     type: 'exclude_worst',
@@ -181,7 +182,7 @@ const POLICY_DEFINITIONS = [
   {
     id: 'cleaning_rota',
     name: 'Cleaning Rota',
-    description: 'Remove worst {pct}% of residents\' tidiness stats from the house resident multiplier',
+    description: 'Remove worst-performing residents\' tidiness stats from the house average',
     primitive: 'cleanliness',
     stat: 'tidiness',
     type: 'exclude_worst',
@@ -353,7 +354,9 @@ const DEFAULT_PRIMITIVE_CONFIG = {
     "socioMult": 0.25,
     "partyCoeff": 0.25,
     "funFatigueCoeff": 0.005,
-    "driveFatigueCoeff": 0.005
+    "driveFatigueCoeff": 0.005,
+    "penaltyK": 2,
+    "penaltyP": 2
   },
   "fun": {
     "outputRate": 9.2,
@@ -536,6 +539,13 @@ const DEFAULT_VIBES_CONFIG = {
       "tierMax": 9
     }
   ],
+  "fameLevels": [
+    { "name": "Obscure", "min": 0, "max": 20, "minTier": 0 },
+    { "name": "Reputable", "min": 20, "max": 40, "minTier": 1 },
+    { "name": "Aspirational", "min": 40, "max": 60, "minTier": 2 },
+    { "name": "Famous", "min": 60, "max": 80, "minTier": 3 },
+    { "name": "Mythical", "min": 80, "max": 101, "minTier": 4 }
+  ],
   "branchLabels": {
     "highPartytime": {
       "mild": "Party House",
@@ -603,6 +613,15 @@ const DEFAULT_BUDGET_CONFIG = {
   }
 };
 
+const DEFAULT_NOTICEBOARD_CONFIG = {
+  maxEvents: 100,
+  healthWarningThreshold: 35,
+  healthCriticalThreshold: 20,
+  treasuryLowThreshold: 200,
+  treasuryCriticalThreshold: 50,
+  populationMilestones: [5, 10, 15, 20]
+};
+
 const INITIAL_DEFAULTS = {
   startingTreasury: 0,
   startingResidents: 4,
@@ -634,6 +653,16 @@ const INITIAL_DEFAULTS = {
 };
 
 const DEFAULT_PRIMITIVE_LABELS = {
+  pressure: {
+    crowding: {
+      thresholds: [16, 31, 51, 71, 86],
+      labels: ['Spacious', 'Comfortable', 'Tight', 'Crowded', 'Sardines', 'Bursting']
+    },
+    noise: {
+      thresholds: [16, 31, 51, 71, 86],
+      labels: ['Quiet', 'Lively', 'Loud', 'Rowdy', 'Circus', 'Deafening']
+    }
+  },
   coverage: {
     nutrition: {
       thresholds: [25, 45, 60, 75, 90],
@@ -664,6 +693,92 @@ const DEFAULT_PRIMITIVE_LABELS = {
   }
 };
 
+const DEFAULT_SCORE_CONFIG = {
+  weeklyFormula: {
+    scale: 10,
+    harmonyFloor: 0.7,
+    harmonyWeight: 0.3,
+    popScaleBrackets: [
+      { maxN: 4, mult: 1.0 },
+      { maxN: 8, mult: 1.5 },
+      { maxN: 12, mult: 2.0 },
+      { maxN: Infinity, mult: 3.0 }
+    ]
+  }
+};
+
+const MILESTONE_DEFINITIONS = [
+  // Population
+  { id: 'pop_5', category: 'population', badgeName: 'Open Doors', points: 100, flavour: 'Someone new moved in', condition: { type: 'population', min: 5 } },
+  { id: 'pop_8', category: 'population', badgeName: 'Growing', points: 200, flavour: 'The commune is filling up', condition: { type: 'population', min: 8 } },
+  { id: 'pop_12', category: 'population', badgeName: 'Established', points: 400, flavour: 'A proper commune now', condition: { type: 'population', min: 12 } },
+  { id: 'pop_16', category: 'population', badgeName: 'Full House', points: 750, flavour: 'Every bed has a llama', condition: { type: 'population', min: 16 } },
+  { id: 'zero_churn_4', category: 'population', badgeName: 'Stable Community', points: 300, flavour: 'Nobody wants to leave', condition: { type: 'zeroChurnStreak', min: 4 } },
+
+  // Vibes
+  { id: 'vibes_25', category: 'vibes', badgeName: 'Scrappy', points: 50, flavour: 'Getting by', condition: { type: 'vibes', min: 25 } },
+  { id: 'vibes_35', category: 'vibes', badgeName: 'Fine', points: 100, flavour: 'Things are okay', condition: { type: 'vibes', min: 35 } },
+  { id: 'vibes_45', category: 'vibes', badgeName: 'Good', points: 200, flavour: 'Genuinely pleasant', condition: { type: 'vibes', min: 45 } },
+  { id: 'vibes_55', category: 'vibes', badgeName: 'Lovely', points: 400, flavour: 'A lovely place to live', condition: { type: 'vibes', min: 55 } },
+  { id: 'vibes_65', category: 'vibes', badgeName: 'Thriving', points: 600, flavour: 'The commune is thriving', condition: { type: 'vibes', min: 65 } },
+  { id: 'vibes_75', category: 'vibes', badgeName: 'Wonderful', points: 800, flavour: 'Something special', condition: { type: 'vibes', min: 75 } },
+  { id: 'vibes_85', category: 'vibes', badgeName: 'Glorious', points: 1000, flavour: 'A beacon of communal living', condition: { type: 'vibes', min: 85 } },
+  { id: 'vibes_95', category: 'vibes', badgeName: 'Utopia', points: 2000, flavour: 'Perfection achieved', condition: { type: 'vibes', min: 95 } },
+
+  // Reputation
+  { id: 'rep_reputable', category: 'reputation', badgeName: 'Reputable', points: 150, flavour: 'People have heard of this place', condition: { type: 'reputation', name: 'Reputable' } },
+  { id: 'rep_aspirational', category: 'reputation', badgeName: 'Aspirational', points: 400, flavour: 'People aspire to live here', condition: { type: 'reputation', name: 'Aspirational' } },
+  { id: 'rep_famous', category: 'reputation', badgeName: 'Famous', points: 800, flavour: 'Everyone knows Fort Llama', condition: { type: 'reputation', name: 'Famous' } },
+  { id: 'rep_mythical', category: 'reputation', badgeName: 'Mythical', points: 2000, flavour: 'The stuff of legend', condition: { type: 'reputation', name: 'Mythical' } },
+
+  // Economic
+  { id: 'econ_breakeven', category: 'economic', badgeName: 'Breaking Even', points: 150, flavour: 'No longer bleeding money', condition: { type: 'weeklyDelta', min: 0 } },
+  { id: 'econ_black', category: 'economic', badgeName: 'Out of the Red', points: 300, flavour: 'Debt free at last', condition: { type: 'treasury', min: 0 } },
+  { id: 'econ_2k', category: 'economic', badgeName: 'Rainy Day Fund', points: 500, flavour: 'A cushion for hard times', condition: { type: 'treasury', min: 2000 } },
+  { id: 'econ_5k', category: 'economic', badgeName: 'Flush', points: 750, flavour: 'The commune is thriving financially', condition: { type: 'treasury', min: 5000 } },
+
+  // Building
+  { id: 'build_first', category: 'building', badgeName: 'Expanding', points: 100, flavour: 'Breaking ground', condition: { type: 'building', any: true } },
+  { id: 'build_heaven', category: 'building', badgeName: 'Pillow Paradise', points: 250, flavour: 'Blanket fort heaven is real', condition: { type: 'building', id: 'heaven' } },
+  { id: 'build_hot_tub', category: 'building', badgeName: 'Bubbles', points: 250, flavour: 'Outdoor luxury', condition: { type: 'building', id: 'hot_tub' } },
+
+  // Branch
+  { id: 'branch_showhome', category: 'branch', badgeName: 'Showhome', points: 100, flavour: 'Living standards are the star', condition: { type: 'branch', label: 'Showhome' } },
+  { id: 'branch_party_house', category: 'branch', badgeName: 'Party House', points: 100, flavour: 'Good times are the star', condition: { type: 'branch', label: 'Party House' } },
+  { id: 'branch_grind_house', category: 'branch', badgeName: 'Grind House', points: 100, flavour: 'Productivity is the star', condition: { type: 'branch', label: 'Grind House' } },
+  { id: 'branch_dolls_house', category: 'branch', badgeName: 'Dolls House', points: 200, flavour: 'Living standards dominate everything', condition: { type: 'branch', label: 'Dolls House' } },
+  { id: 'branch_party_mansion', category: 'branch', badgeName: 'Party Mansion', points: 200, flavour: 'This commune runs on fun', condition: { type: 'branch', label: 'Party Mansion' } },
+  { id: 'branch_sweat_shop', category: 'branch', badgeName: 'Sweat Shop', points: 200, flavour: 'All work, no play', condition: { type: 'branch', label: 'Sweat Shop' } },
+
+  // Survival
+  { id: 'survive_10', category: 'survival', badgeName: 'Still Standing', points: 100, flavour: 'You made it past the danger zone', condition: { type: 'week', min: 10 } },
+  { id: 'survive_25', category: 'survival', badgeName: 'Veteran', points: 300, flavour: 'Half a year of communal living', condition: { type: 'week', min: 25 } },
+  { id: 'survive_52', category: 'survival', badgeName: 'One Year', points: 750, flavour: 'A full year — remarkable', condition: { type: 'week', min: 52 } },
+
+  // Culture — Tech Badges (badgeName TBC — user is working on these)
+  { id: 'tech_chores_rota', category: 'culture', badgeName: 'TBC', points: 100, flavour: 'TBC', condition: { type: 'tech', techId: 'chores_rota' } },
+  { id: 'tech_starlink', category: 'culture', badgeName: 'TBC', points: 100, flavour: 'TBC', condition: { type: 'tech', techId: 'starlink' } },
+  { id: 'tech_blanket_fort', category: 'culture', badgeName: 'TBC', points: 100, flavour: 'TBC', condition: { type: 'tech', techId: 'blanket_fort' } },
+  { id: 'tech_cleaner', category: 'culture', badgeName: 'TBC', points: 250, flavour: 'TBC', condition: { type: 'tech', techId: 'cleaner' } },
+  { id: 'tech_ocado', category: 'culture', badgeName: 'TBC', points: 250, flavour: 'TBC', condition: { type: 'tech', techId: 'ocado' } },
+  { id: 'tech_wellness', category: 'culture', badgeName: 'TBC', points: 250, flavour: 'TBC', condition: { type: 'tech', techId: 'wellness' } },
+  { id: 'tech_great_hall', category: 'culture', badgeName: 'TBC', points: 250, flavour: 'TBC', condition: { type: 'tech', techId: 'great_hall' } },
+  { id: 'tech_always_be_escalating', category: 'culture', badgeName: 'TBC', points: 250, flavour: 'TBC', condition: { type: 'tech', techId: 'always_be_escalating' } },
+  { id: 'tech_outdoor_plumbing', category: 'culture', badgeName: 'TBC', points: 250, flavour: 'TBC', condition: { type: 'tech', techId: 'outdoor_plumbing' } },
+  { id: 'tech_laundry_room', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'laundry_room' } },
+  { id: 'tech_ukrainian_cleaner', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'ukrainian_cleaner' } },
+  { id: 'tech_competitive_cooking', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'competitive_cooking' } },
+  { id: 'tech_majestic_guvnor', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'majestic_guvnor' } },
+  { id: 'tech_group_yoga', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'group_yoga' } },
+  { id: 'tech_sauna', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'sauna' } },
+  { id: 'tech_call_rooms', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'call_rooms' } },
+  { id: 'tech_adderall', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'adderall' } },
+  { id: 'tech_party_planning', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'party_planning' } },
+  { id: 'tech_psychedelics', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'psychedelics' } },
+  { id: 'tech_polyamory', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'polyamory' } },
+  { id: 'tech_advanced_blanket_fort', category: 'culture', badgeName: 'TBC', points: 500, flavour: 'TBC', condition: { type: 'tech', techId: 'advanced_blanket_fort' } }
+];
+
 module.exports = {
   DAY_NAMES,
   STARTING_LLAMAS,
@@ -678,5 +793,8 @@ module.exports = {
   DEFAULT_VIBES_CONFIG,
   DEFAULT_BUDGET_CONFIG,
   DEFAULT_PRIMITIVE_LABELS,
+  DEFAULT_SCORE_CONFIG,
+  MILESTONE_DEFINITIONS,
+  DEFAULT_NOTICEBOARD_CONFIG,
   INITIAL_DEFAULTS
 };
