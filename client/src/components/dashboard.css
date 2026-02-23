@@ -1,0 +1,25 @@
+/* Pseudo-selector styles that can't be done inline */
+
+.fl-scroll::-webkit-scrollbar { width: 6px; }
+.fl-scroll::-webkit-scrollbar-track { background: rgba(70,70,70,0.3); }
+.fl-scroll::-webkit-scrollbar-thumb { background: #4a4a4a; }
+.fl-scroll::-webkit-scrollbar-thumb:hover { background: #6a6866; }
+.fl-scroll { scrollbar-width: thin; scrollbar-color: #4a4a4a rgba(70,70,70,0.3); }
+
+input.fl-rent { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #4a4a4a; outline: none; cursor: pointer; }
+input.fl-rent::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #D4A035; border: 2px solid #E8B84A; cursor: pointer; }
+input.fl-rent::-moz-range-thumb { width: 16px; height: 16px; background: #D4A035; border: 2px solid #E8B84A; cursor: pointer; border-radius: 0; }
+
+/* Cloud drift animations — slow single-direction loops */
+@keyframes fl-drift1 {
+  from { transform: translateX(-30%); }
+  to   { transform: translateX(110vw); }
+}
+@keyframes fl-drift2 {
+  from { transform: translateX(110vw); }
+  to   { transform: translateX(-30%); }
+}
+@keyframes fl-drift3 {
+  from { transform: translateX(-20%); }
+  to   { transform: translateX(110vw); }
+}

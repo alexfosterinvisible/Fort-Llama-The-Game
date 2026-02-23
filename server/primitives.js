@@ -40,13 +40,10 @@ function getBuildingMult(buildingId, multKey) {
 }
 
 function overcrowdingPenalty(ratio, primitiveName = null) {
-  let k = state.primitiveConfig.penaltyK;
-  let p = state.primitiveConfig.penaltyP;
-  let onset = state.primitiveConfig.penaltyOnset ?? 0.75;
-  if (primitiveName && state.primitiveConfig[primitiveName]?.useCustomPenalty) {
-    k = state.primitiveConfig[primitiveName].penaltyK ?? k;
-    p = state.primitiveConfig[primitiveName].penaltyP ?? p;
-  }
+  const prim = primitiveName ? state.primitiveConfig[primitiveName] : null;
+  const k = prim?.penaltyK ?? state.primitiveConfig.penaltyK;
+  const p = prim?.penaltyP ?? state.primitiveConfig.penaltyP;
+  const onset = prim?.penaltyOnset ?? state.primitiveConfig.penaltyOnset ?? 0.75;
   const over = Math.max(0, ratio - onset);
   return 1 + k * Math.pow(over, p);
 }
@@ -226,6 +223,8 @@ function calculatePrimitives() {
   state.gameState.coverageData = {
     tier,
     tierOutputMult,
+    crowding: { label: getPrimitiveTierLabel(pl.pressure.crowding, crowding) },
+    noise: { label: getPrimitiveTierLabel(pl.pressure.noise, noise) },
     nutrition: { supply: totalNutritionSupply, demand: nutritionDemand, ratio: nutritionRatio, label: getPrimitiveTierLabel(pl.coverage.nutrition, nutrition), budgetMult: nutrBudgetMult },
     fun: { supply: totalFunWithBuildings, demand: funDemand, ratio: funRatio, label: getPrimitiveTierLabel(pl.coverage.fun, fun), budgetMult: funBudgetMult },
     drive: { supply: totalDriveSupply, demand: driveDemand, ratio: driveRatio, label: getPrimitiveTierLabel(pl.coverage.drive, drive), budgetMult: driveBudgetMult },

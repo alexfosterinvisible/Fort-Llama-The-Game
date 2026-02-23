@@ -12,7 +12,9 @@ const {
   DEFAULT_BUDGET_CONFIG,
   DEFAULT_POLICY_CONFIG,
   DEFAULT_TECH_CONFIG,
-  INITIAL_DEFAULTS
+  DEFAULT_NOTICEBOARD_CONFIG,
+  INITIAL_DEFAULTS,
+  TECH_TREE
 } = require('./config');
 const { deepMergePrimitives } = require('./utils');
 const { getAvailableLlamas } = require('./residents');
@@ -154,7 +156,11 @@ function initializeGame(config = state.savedDefaults) {
     researchingTech: null,
     policyChangesThisWeek: 0,
     policiesStableWeeks: 0,
-    previousPolicies: []
+    previousPolicies: [],
+    events: [],
+    nextEventId: 1,
+    previousWeekSnapshot: null,
+    populationMilestonesHit: []
   };
   calculatePrimitives();
   calculateHealthMetrics();
@@ -168,6 +174,24 @@ function initializeGame(config = state.savedDefaults) {
   });
   calculateWeeklyProjection();
   generateWeekCandidates();
+  addEvent('good', 'Welcome to Fort Llama. The most fun you can have while totally naked.');
+}
+
+function addEvent(type, text, priority = 'normal') {
+  const gs = state.gameState;
+  const nbConfig = DEFAULT_NOTICEBOARD_CONFIG;
+  const event = {
+    id: gs.nextEventId++,
+    week: gs.week,
+    day: gs.day,
+    type,
+    text,
+    priority,
+  };
+  gs.events.push(event);
+  while (gs.events.length > (nbConfig.maxEvents || 100)) {
+    gs.events.shift();
+  }
 }
 
 function generateWeekCandidates() {
@@ -252,10 +276,16 @@ function processTick() {
 }
 
 function processWeekEnd() {
+  const gs = state.gameState;
+  const nbConfig = DEFAULT_NOTICEBOARD_CONFIG;
+
+  // Snapshot health metrics and treasury BEFORE processing for deduplication
+  const prevSnapshot = gs.previousWeekSnapshot;
+
   const churnCount = calculateWeeklyChurnCount();
   const churnedResidents = [];
 
-  const activeResidents = state.gameState.communeResidents.filter(r => !r.churned);
+  const activeResidents = gs.communeResidents.filter(r => !r.churned);
   for (let i = 0; i < churnCount && activeResidents.length > 0; i++) {
     const randomIndex = Math.floor(Math.random() * activeResidents.length);
     const churned = activeResidents.splice(randomIndex, 1)[0];
@@ -263,33 +293,42 @@ function processWeekEnd() {
     churnedResidents.push(churned);
   }
 
-  const actualProfit = state.gameState.treasury - state.gameState.treasuryAtWeekStart;
+  // Noticeboard: churn departures
+  for (const r of churnedResidents) {
+    addEvent('departure', `${r.name} has left the building.`);
+  }
 
-  state.gameState.lastWeekSummary = {
-    week: state.gameState.week,
-    income: state.gameState.projectedIncome,
-    groundRent: state.gameState.projectedGroundRent,
-    utilities: state.gameState.projectedUtilities,
-    budget: state.gameState.projectedBudget || 0,
-    fixedCosts: state.gameState.projectedFixedCosts || 0,
-    totalExpenses: state.gameState.projectedGroundRent + state.gameState.projectedUtilities + (state.gameState.projectedBudget || 0) + (state.gameState.projectedFixedCosts || 0),
+  const actualProfit = gs.treasury - gs.treasuryAtWeekStart;
+
+  gs.lastWeekSummary = {
+    week: gs.week,
+    income: gs.projectedIncome,
+    groundRent: gs.projectedGroundRent,
+    utilities: gs.projectedUtilities,
+    budget: gs.projectedBudget || 0,
+    fixedCosts: gs.projectedFixedCosts || 0,
+    totalExpenses: gs.projectedGroundRent + gs.projectedUtilities + (gs.projectedBudget || 0) + (gs.projectedFixedCosts || 0),
     profit: actualProfit,
     arrivedResidents: [],
     churnedResidents: churnedResidents.map(r => r.name)
   };
 
-  state.gameState.communeResidents.forEach(r => r.daysThisWeek = 7);
+  gs.communeResidents.forEach(r => r.daysThisWeek = 7);
 
-  if (state.gameState.researchingTech) {
-    const completedTechId = state.gameState.researchingTech;
-    state.gameState.researchedTechs.push(completedTechId);
-    state.gameState.researchCompletedThisWeek = completedTechId;
-    state.gameState.researchingTech = null;
+  if (gs.researchingTech) {
+    const completedTechId = gs.researchingTech;
+    gs.researchedTechs.push(completedTechId);
+    gs.researchCompletedThisWeek = completedTechId;
+    gs.researchingTech = null;
     calculatePrimitives();
     calculateHealthMetrics();
     calculateVibes();
+
+    // Noticeboard: research completion
+    const tech = TECH_TREE.find(t => t.id === completedTechId);
+    addEvent('good', `Research complete: ${tech ? tech.name : completedTechId}.`);
   } else {
-    state.gameState.researchCompletedThisWeek = null;
+    gs.researchCompletedThisWeek = null;
   }
 
   // Scoring runs after tech completion so new techs count this week
@@ -297,29 +336,82 @@ function processWeekEnd() {
   calculateWeeklyScore();
   checkMilestones();
 
-  const prevPolicies = [...(state.gameState.previousPolicies || [])];
-  const currPolicies = [...(state.gameState.activePolicies || [])];
+  // Noticeboard: health metric warnings and recoveries
+  const healthNames = { livingStandards: 'Living Standards', productivity: 'Productivity', partytime: 'Partytime' };
+  for (const [key, label] of Object.entries(healthNames)) {
+    const val = Math.round((gs.healthMetrics[key] || 0) * 100);
+    const prevVal = prevSnapshot ? prevSnapshot.health[key] : 100;
+
+    // Critical threshold (downward crossing)
+    if (val < nbConfig.healthCriticalThreshold && prevVal >= nbConfig.healthCriticalThreshold) {
+      addEvent('warning', `⚠ ${label} is critical (${val}%).`, 'high');
+    }
+    // Low threshold (downward crossing) — only if not also crossing critical
+    else if (val < nbConfig.healthWarningThreshold && prevVal >= nbConfig.healthWarningThreshold) {
+      addEvent('warning', `${label} is struggling (${val}%).`);
+    }
+
+    // Recovery (upward crossing from below warning)
+    if (prevSnapshot) {
+      if (prevVal < nbConfig.healthWarningThreshold && val >= nbConfig.healthWarningThreshold) {
+        addEvent('good', `${label} is recovering (${val}%).`);
+      } else if (prevVal < nbConfig.healthCriticalThreshold && val >= nbConfig.healthCriticalThreshold && val < nbConfig.healthWarningThreshold) {
+        addEvent('good', `${label} is recovering (${val}%).`);
+      }
+    }
+  }
+
+  // Noticeboard: treasury warnings (downward crossing)
+  const treasuryVal = Math.round(gs.treasury);
+  const prevTreasury = prevSnapshot ? prevSnapshot.treasury : Infinity;
+  if (treasuryVal < nbConfig.treasuryCriticalThreshold && prevTreasury >= nbConfig.treasuryCriticalThreshold) {
+    addEvent('warning', `⚠ The commune is nearly broke (£${treasuryVal}).`, 'high');
+  } else if (treasuryVal < nbConfig.treasuryLowThreshold && prevTreasury >= nbConfig.treasuryLowThreshold) {
+    addEvent('warning', `Funds are running low (£${treasuryVal}).`);
+  }
+
+  // Noticeboard: population milestones
+  const activeCount = gs.communeResidents.filter(r => !r.churned).length;
+  for (const milestone of nbConfig.populationMilestones) {
+    if (activeCount >= milestone && !gs.populationMilestonesHit.includes(milestone)) {
+      gs.populationMilestonesHit.push(milestone);
+      addEvent('good', `The commune has grown to ${milestone} residents!`);
+    }
+  }
+
+  // Save snapshot for next week's deduplication
+  gs.previousWeekSnapshot = {
+    health: {
+      livingStandards: Math.round((gs.healthMetrics.livingStandards || 0) * 100),
+      productivity: Math.round((gs.healthMetrics.productivity || 0) * 100),
+      partytime: Math.round((gs.healthMetrics.partytime || 0) * 100),
+    },
+    treasury: Math.round(gs.treasury),
+  };
+
+  const prevPolicies = [...(gs.previousPolicies || [])];
+  const currPolicies = [...(gs.activePolicies || [])];
   const policiesUnchanged = prevPolicies.length === currPolicies.length &&
     prevPolicies.every(p => currPolicies.includes(p));
   if (currPolicies.length >= 3 && policiesUnchanged) {
-    state.gameState.policiesStableWeeks = (state.gameState.policiesStableWeeks || 0) + 1;
+    gs.policiesStableWeeks = (gs.policiesStableWeeks || 0) + 1;
   } else if (currPolicies.length >= 3) {
-    state.gameState.policiesStableWeeks = 1;
+    gs.policiesStableWeeks = 1;
   } else {
-    state.gameState.policiesStableWeeks = 0;
+    gs.policiesStableWeeks = 0;
   }
-  state.gameState.previousPolicies = [...currPolicies];
-  state.gameState.policyChangesThisWeek = 0;
+  gs.previousPolicies = [...currPolicies];
+  gs.policyChangesThisWeek = 0;
 
-  state.gameState.week += 1;
-  state.gameState.day = 1;
-  state.gameState.hour = 9;
-  state.gameState.dayName = 'Monday';
-  state.gameState.hasRecruitedThisWeek = false;
-  state.gameState.hasResearchedThisWeek = false;
-  state.gameState.buildsThisWeek = 0;
-  state.gameState.treasuryAtWeekStart = state.gameState.treasury;
-  state.gameState.isPausedForWeeklyDecision = true;
+  gs.week += 1;
+  gs.day = 1;
+  gs.hour = 9;
+  gs.dayName = 'Monday';
+  gs.hasRecruitedThisWeek = false;
+  gs.hasResearchedThisWeek = false;
+  gs.buildsThisWeek = 0;
+  gs.treasuryAtWeekStart = gs.treasury;
+  gs.isPausedForWeeklyDecision = true;
   stopSimulation();
 
   calculateWeeklyProjection();
@@ -357,5 +449,6 @@ module.exports = {
   processWeekEnd,
   startSimulation,
   stopSimulation,
-  dismissWeeklyPause
+  dismissWeeklyPause,
+  addEvent
 };

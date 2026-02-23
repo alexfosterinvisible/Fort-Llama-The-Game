@@ -113,7 +113,7 @@ function calculateVibes() {
 
   const vibesScore = overallLevel * 100;
   const popTier = getPopulationTier(N);
-  const fameThresholds = [
+  const fameThresholds = cfg.fameLevels || [
     { min: 0, max: 20, name: 'Obscure', minTier: 0 },
     { min: 20, max: 40, name: 'Reputable', minTier: 1 },
     { min: 40, max: 60, name: 'Aspirational', minTier: 2 },

@@ -160,7 +160,8 @@ const DEFAULT_TIER_CONFIG = {
 };
 
 const DEFAULT_POLICY_CONFIG = {
-  "excludePercent": 0.25,
+  "cooking_rota": { "excludePercent": 0.25 },
+  "cleaning_rota": { "excludePercent": 0.25 },
   "funPenalty": {
     "threshold": 3,
     "K": 0.15,
@@ -172,7 +173,7 @@ const POLICY_DEFINITIONS = [
   {
     id: 'cooking_rota',
     name: 'Cooking Rota',
-    description: 'Remove worst {pct}% of residents\' cooking stats from the house resident multiplier',
+    description: 'Remove worst-performing residents\' cooking stats from the house average',
     primitive: 'nutrition',
     stat: 'cookingSkill',
     type: 'exclude_worst',
@@ -181,7 +182,7 @@ const POLICY_DEFINITIONS = [
   {
     id: 'cleaning_rota',
     name: 'Cleaning Rota',
-    description: 'Remove worst {pct}% of residents\' tidiness stats from the house resident multiplier',
+    description: 'Remove worst-performing residents\' tidiness stats from the house average',
     primitive: 'cleanliness',
     stat: 'tidiness',
     type: 'exclude_worst',
@@ -353,7 +354,9 @@ const DEFAULT_PRIMITIVE_CONFIG = {
     "socioMult": 0.25,
     "partyCoeff": 0.25,
     "funFatigueCoeff": 0.005,
-    "driveFatigueCoeff": 0.005
+    "driveFatigueCoeff": 0.005,
+    "penaltyK": 2,
+    "penaltyP": 2
   },
   "fun": {
     "outputRate": 9.2,
@@ -536,6 +539,13 @@ const DEFAULT_VIBES_CONFIG = {
       "tierMax": 9
     }
   ],
+  "fameLevels": [
+    { "name": "Obscure", "min": 0, "max": 20, "minTier": 0 },
+    { "name": "Reputable", "min": 20, "max": 40, "minTier": 1 },
+    { "name": "Aspirational", "min": 40, "max": 60, "minTier": 2 },
+    { "name": "Famous", "min": 60, "max": 80, "minTier": 3 },
+    { "name": "Mythical", "min": 80, "max": 101, "minTier": 4 }
+  ],
   "branchLabels": {
     "highPartytime": {
       "mild": "Party House",
@@ -603,6 +613,15 @@ const DEFAULT_BUDGET_CONFIG = {
   }
 };
 
+const DEFAULT_NOTICEBOARD_CONFIG = {
+  maxEvents: 100,
+  healthWarningThreshold: 35,
+  healthCriticalThreshold: 20,
+  treasuryLowThreshold: 200,
+  treasuryCriticalThreshold: 50,
+  populationMilestones: [5, 10, 15, 20]
+};
+
 const INITIAL_DEFAULTS = {
   startingTreasury: 0,
   startingResidents: 4,
@@ -634,6 +653,16 @@ const INITIAL_DEFAULTS = {
 };
 
 const DEFAULT_PRIMITIVE_LABELS = {
+  pressure: {
+    crowding: {
+      thresholds: [16, 31, 51, 71, 86],
+      labels: ['Spacious', 'Comfortable', 'Tight', 'Crowded', 'Sardines', 'Bursting']
+    },
+    noise: {
+      thresholds: [16, 31, 51, 71, 86],
+      labels: ['Quiet', 'Lively', 'Loud', 'Rowdy', 'Circus', 'Deafening']
+    }
+  },
   coverage: {
     nutrition: {
       thresholds: [25, 45, 60, 75, 90],
@@ -766,5 +795,6 @@ module.exports = {
   DEFAULT_PRIMITIVE_LABELS,
   DEFAULT_SCORE_CONFIG,
   MILESTONE_DEFINITIONS,
+  DEFAULT_NOTICEBOARD_CONFIG,
   INITIAL_DEFAULTS
 };
