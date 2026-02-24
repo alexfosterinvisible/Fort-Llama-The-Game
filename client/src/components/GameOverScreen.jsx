@@ -1,4 +1,4 @@
-import { T, FONT, FS } from './theme';
+import { T, FONT, FONT_BODY, FS } from './theme';
 
 // Placeholder game-over screen in new theme
 export function GameOverScreen({ onRestart }) {
@@ -16,7 +16,7 @@ export function GameOverScreen({ onRestart }) {
           GAME OVER
         </div>
         <p style={{
-          fontFamily: 'monospace', fontSize: '11px', color: T.textSecondary,
+          fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary,
           lineHeight: '1.6', marginBottom: '24px',
         }}>
           Your commune has gone bankrupt. The llamas have scattered to the winds.

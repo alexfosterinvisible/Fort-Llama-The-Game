@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import './components/dashboard.css';
-import { T, STAT_DISPLAY, BUDGET_DISPLAY } from './components/theme';
+import { T, STAT_DISPLAY, BUDGET_DISPLAY, TREE_COLORS, TREE_LABELS } from './components/theme';
 import { TopBar } from './components/TopBar';
 import { ActionPanel } from './components/ActionPanel';
 import { MainDashboard } from './components/MainDashboard';
@@ -456,6 +456,7 @@ function App() {
   };
 
   const updatePrimitiveConfig = (primitive, field, value) => {
+    if (!Number.isFinite(value)) return;
     setEditConfig(prev => {
       if (primitive === 'global') {
         return { ...prev, primitives: { ...prev.primitives, [field]: value } };
@@ -1121,9 +1122,9 @@ function App() {
           <div className="health-banner">
             <div className="vibes-metrics">
               {[
-                { key: 'livingStandards', label: 'Living Standards', color: '#4fd1c5' },
-                { key: 'productivity', label: 'Productivity', color: '#4299e1' },
-                { key: 'partytime', label: 'Partytime', color: '#b794f4' }
+                { key: 'livingStandards', label: 'Living Standards', color: T.ls },
+                { key: 'productivity', label: 'Productivity', color: T.pr },
+                { key: 'partytime', label: 'Leisure', color: T.pt }
               ].map(m => {
                 const val = Math.round((gameState.healthMetrics?.[m.key] || 0.5) * 100);
                 return (
@@ -1140,9 +1141,9 @@ function App() {
                 if (history.length < 1) return <span className="vibes-graph-empty">No data yet</span>;
                 const w = 160, h = 60, pad = 4;
                 const metrics = [
-                  { key: 'ls', color: '#4fd1c5' },
-                  { key: 'pr', color: '#4299e1' },
-                  { key: 'pt', color: '#b794f4' }
+                  { key: 'ls', color: T.ls },
+                  { key: 'pr', color: T.pr },
+                  { key: 'pt', color: T.pt }
                 ];
                 const recent = history.slice(-28);
                 const maxVal = 100;
@@ -1314,9 +1315,9 @@ function App() {
               {gameState.researchedTechs?.includes('great_hall') && (() => {
                 const gh = gameState.buildings?.find(b => b.id === 'great_hall');
                 return gh ? (
-                  <div className="stat" style={{borderTop: '1px solid #4a5568', paddingTop: '4px', marginTop: '4px'}}>
-                    <span className="stat-label" style={{color: '#4299e1'}}>Great Hall (Upgrade)</span>
-                    <span className="stat-value" style={{color: '#4299e1', fontSize: '0.75rem'}}>Active</span>
+                  <div className="stat" style={{borderTop: `1px solid ${T.panelBorder}`, paddingTop: '4px', marginTop: '4px'}}>
+                    <span className="stat-label" style={{color: T.pr}}>Great Hall (Upgrade)</span>
+                    <span className="stat-value" style={{color: T.pr, fontSize: '0.75rem'}}>Active</span>
                   </div>
                 ) : null;
               })()}
@@ -1325,7 +1326,7 @@ function App() {
             <div className="card">
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                 <h2 style={{margin: 0}}>Active Policies</h2>
-                <span style={{background: (gameState.activePolicies?.length || 0) > 3 ? '#e53e3e' : (gameState.activePolicies?.length || 0) > 0 ? '#48bb78' : '#4a5568', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600}}>
+                <span style={{background: (gameState.activePolicies?.length || 0) > 3 ? T.negative : (gameState.activePolicies?.length || 0) > 0 ? T.positive : T.panelBorder, color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600}}>
                   {gameState.activePolicies?.length || 0} / 3
                 </span>
               </div>
@@ -1339,7 +1340,7 @@ function App() {
                     return (
                       <div key={pId} className="stat has-tooltip">
                         <span className="stat-label">{policy.name}</span>
-                        <span className="stat-value" style={{color: '#48bb78', fontSize: '0.8rem'}}>+{pct}% {policy.primitive.charAt(0).toUpperCase() + policy.primitive.slice(1)}</span>
+                        <span className="stat-value" style={{color: T.positive, fontSize: '0.8rem'}}>+{pct}% {policy.primitive.charAt(0).toUpperCase() + policy.primitive.slice(1)}</span>
                         <div className="projection-tooltip">
                           <div className="tooltip-title">{policy.name}</div>
                           <div className="tooltip-row"><span>{desc}</span></div>
@@ -1349,13 +1350,13 @@ function App() {
                     );
                   })}
                   {gameState.activePolicies.length > (gameState.policyConfig?.funPenalty?.threshold || 3) && (
-                    <div className="panel-note" style={{color: '#f56565', marginTop: '4px', fontSize: '0.75rem'}}>
+                    <div className="panel-note" style={{color: T.negative, marginTop: '4px', fontSize: '0.75rem'}}>
                       Fun penalty active ({gameState.activePolicies.length} policies &gt; {gameState.policyConfig?.funPenalty?.threshold || 3} threshold)
                     </div>
                   )}
                 </>
               ) : (
-                <div style={{color: '#718096', fontSize: '0.85rem', fontStyle: 'italic', padding: '8px 0'}}>No active policies</div>
+                <div style={{color: T.textMuted, fontSize: '0.85rem', fontStyle: 'italic', padding: '8px 0'}}>No active policies</div>
               )}
             </div>
 
@@ -1367,7 +1368,7 @@ function App() {
                   <h2>Culture Badges</h2>
                   <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
                     {cultureTechs.map(tech => {
-                      const treeColor = tech.tree === 'livingStandards' ? '#4fd1c5' : tech.tree === 'productivity' ? '#4299e1' : '#b794f4';
+                      const treeColor = tech.tree === 'livingStandards' ? T.ls : tech.tree === 'productivity' ? T.pr : T.pt;
                       return (
                         <span key={tech.id} style={{background: treeColor + '22', color: treeColor, border: `1px solid ${treeColor}44`, padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600}}>
                           {tech.name}
@@ -1389,7 +1390,7 @@ function App() {
                   const tierIndex = val < 25 ? 0 : val < 50 ? 1 : val < 75 ? 2 : 3;
                   const tierLabel = p.tiers[tierIndex];
                   const needleAngle = -135 + (val / 100) * 270;
-                  const tierColors = ['#48bb78', '#ed8936', '#f56565', '#e53e3e'];
+                  const tierColors = [T.positive, T.accentBright, T.negative, T.negative];
                   const tierColor = tierColors[tierIndex];
                   
                   return (
@@ -1412,9 +1413,9 @@ function App() {
                         />
                         <defs>
                           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#48bb78" />
-                            <stop offset="50%" stopColor="#ed8936" />
-                            <stop offset="100%" stopColor="#e53e3e" />
+                            <stop offset="0%" stopColor={T.positive} />
+                            <stop offset="50%" stopColor={T.accentBright} />
+                            <stop offset="100%" stopColor={T.negative} />
                           </linearGradient>
                         </defs>
                         <line
@@ -1453,9 +1454,9 @@ function App() {
                   { key: 'fatigue', label: 'Fatigue', icon: '😴' }
                 ].map(p => {
                   const val = Math.round(gameState.primitives?.[p.key] || 0);
-                  const fillColor = val < 30 ? '#48bb78' : val < 60 ? '#ed8936' : '#f56565';
+                  const fillColor = val < 30 ? T.positive : val < 60 ? T.accentBright : T.negative;
                   const tierLabel = gameState.coverageData?.[p.key]?.label;
-                  const tierLabelColor = val < 16 ? '#48bb78' : val < 31 ? '#68d391' : val < 51 ? '#ed8936' : val < 71 ? '#f56565' : '#e53e3e';
+                  const tierLabelColor = val < 16 ? T.positive : val < 31 ? T.positive : val < 51 ? T.accentBright : val < 71 ? T.negative : T.negative;
                   return (
                     <div key={p.key} className="stock-tank">
                       <div className="tank-container">
@@ -1484,16 +1485,16 @@ function App() {
                 const tierLabel = coverage?.label || 'Adequate';
                 const tierColors = {
                   // Nutrition
-                  'Starving': '#f56565', 'Fed': '#ed8936', 'Well Fed': '#ecc94b',
-                  'Feasting': '#68d391', 'Gourmet': '#48bb78', 'Michelin Starred': '#38b2ac',
+                  'Starving': T.negative, 'Fed': T.accentBright, 'Well Fed': T.accentBright,
+                  'Feasting': T.positive, 'Gourmet': T.positive, 'Michelin Starred': T.positive,
                   // Fun
-                  'Boring': '#f56565', 'Buzzy': '#ed8936', 'Good Times': '#ecc94b',
-                  'Boomtown': '#68d391', 'Life Changing': '#48bb78', 'Legendary': '#38b2ac',
+                  'Boring': T.negative, 'Buzzy': T.accentBright, 'Good Times': T.accentBright,
+                  'Boomtown': T.positive, 'Life Changing': T.positive, 'Legendary': T.positive,
                   // Drive
-                  'Idle': '#f56565', 'Motivated': '#ed8936', 'Driven': '#ecc94b',
-                  'On Fire': '#68d391', 'Unstoppable': '#48bb78', 'World Domination': '#38b2ac'
+                  'Idle': T.negative, 'Motivated': T.accentBright, 'Driven': T.accentBright,
+                  'On Fire': T.positive, 'Unstoppable': T.positive, 'World Domination': T.positive
                 };
-                const labelColor = tierColors[tierLabel] || '#805ad5';
+                const labelColor = tierColors[tierLabel] || T.textMuted;
                 return (
                   <div key={p.key} className="primitive-item coverage-item">
                     <span className="prim-icon">{p.icon}</span>
@@ -1613,10 +1614,10 @@ function App() {
                         t.type === 'fixed_expense' && gameState.researchedTechs?.includes(t.id)
                       );
                       return (
-                        <div style={{marginBottom: '6px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px'}}>
-                          <div style={{fontSize: '0.75rem', color: '#cbd5e0', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Fixed Costs</div>
+                        <div style={{marginBottom: '6px', borderBottom: `1px solid ${T.panelBorder}`, paddingBottom: '6px'}}>
+                          <div style={{fontSize: '0.75rem', color: T.textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Fixed Costs</div>
                           {fixedCostTechs.length === 0 ? (
-                            <div style={{color: '#718096', fontSize: '0.8rem', padding: '0'}}>None unlocked</div>
+                            <div style={{color: T.textMuted, fontSize: '0.8rem', padding: '0'}}>None unlocked</div>
                           ) : fixedCostTechs.map(tech => {
                             const cfg = gameState.techConfig?.[tech.id] || {};
                             const isActive = gameState.activeFixedCosts?.includes(tech.id);
@@ -1627,14 +1628,14 @@ function App() {
                                     type="checkbox"
                                     checked={isActive}
                                     onChange={() => handleToggleFixedCost(tech.id)}
-                                    style={{accentColor: '#48bb78'}}
+                                    style={{accentColor: T.positive}}
                                   />
                                   <span className="budget-label">{tech.name}</span>
                                 </label>
-                                <span style={{color: isActive ? '#fc8181' : '#718096', fontSize: '0.8rem', fontWeight: 600}}>
+                                <span style={{color: isActive ? T.negative : T.textMuted, fontSize: '0.8rem', fontWeight: 600}}>
                                   £{cfg.weeklyCost || 0}/wk
                                 </span>
-                                <span style={{color: '#cbd5e0', fontSize: '0.7rem', marginLeft: '6px'}}>
+                                <span style={{color: T.textSecondary, fontSize: '0.7rem', marginLeft: '6px'}}>
                                   +{cfg.effectPercent || 0}%
                                 </span>
                               </div>
@@ -1828,7 +1829,7 @@ function App() {
                 <input type="number" value={editConfig?.health?.pop0 ?? 2} 
                   onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, pop0: parseInt(e.target.value)}})} />
               </div>
-              <p className="config-hint">Enable "Custom Scaling" on individual metrics to override.</p>
+              <p className="config-hint">Per-metric ref0/alpha/p override these global defaults.</p>
             </div>
 
             <div className="config-section">
@@ -1836,7 +1837,7 @@ function App() {
               <p className="config-hint">Population tiers scale output and health expectations. Brackets are readonly; multipliers are tunable.</p>
               <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem'}}>
                 <thead>
-                  <tr style={{borderBottom: '1px solid #4a4a4a', fontSize: '0.7rem', color: '#9a9690'}}>
+                  <tr style={{borderBottom: `1px solid ${T.panelBorder}`, fontSize: '0.7rem', color: T.textSecondary}}>
                     <th style={{textAlign: 'left', padding: '2px 4px 4px 0', fontWeight: 400}}>Level</th>
                     <th style={{textAlign: 'left', padding: '2px 4px 4px', fontWeight: 400}}>Pop</th>
                     <th style={{textAlign: 'right', padding: '2px 4px 4px', fontWeight: 400}}>Output</th>
@@ -1854,7 +1855,7 @@ function App() {
                       setEditConfig(prev => ({...prev, tierConfig: {...(prev.tierConfig || {}), [field]: arr}}));
                     };
                     return (
-                      <tr key={i} style={{borderBottom: '1px solid #2d3748'}}>
+                      <tr key={i} style={{borderBottom: `1px solid ${T.panelBg}`}}>
                         <td style={{padding: '3px 4px 3px 0', color: '#D4A035'}}>L{i + 1}</td>
                         <td style={{padding: '3px 4px', color: '#6a6866'}}>{popRange}</td>
                         <td style={{padding: '3px 4px', textAlign: 'right'}}>
@@ -1883,7 +1884,7 @@ function App() {
               <h3>Vibes & Reputation</h3>
               <div style={{display: 'flex', gap: '16px'}}>
                 <div style={{flex: 1}}>
-                  <label style={{fontSize: '0.75rem', color: '#9a9690', display: 'block', marginBottom: '4px'}}>Vibes Tier Ladder</label>
+                  <label style={{fontSize: '0.75rem', color: T.textSecondary, display: 'block', marginBottom: '4px'}}>Vibes Tier Ladder</label>
                   <div className="tier-ladder-list">
                     {(editConfig?.vibes?.tierThresholds || []).map((tier, idx) => (
                       <div key={idx} className="tier-ladder-item">
@@ -1901,7 +1902,7 @@ function App() {
                   </div>
                 </div>
                 <div style={{flex: 1}}>
-                  <label style={{fontSize: '0.75rem', color: '#9a9690', display: 'block', marginBottom: '4px'}}>Fame Levels (Vibes + pop level)</label>
+                  <label style={{fontSize: '0.75rem', color: T.textSecondary, display: 'block', marginBottom: '4px'}}>Fame Levels (Vibes + pop level)</label>
                   <div className="tier-ladder-list">
                     {(editConfig?.vibes?.fameLevels || []).map((f, idx) => (
                       <div key={idx} className="tier-ladder-item">
@@ -1920,13 +1921,13 @@ function App() {
                   </div>
                 </div>
                 <div style={{flex: 1}}>
-                  <label style={{fontSize: '0.75rem', color: '#9a9690', display: 'block', marginBottom: '4px'}}>Identity Labels (when imbalanced)</label>
+                  <label style={{fontSize: '0.75rem', color: T.textSecondary, display: 'block', marginBottom: '4px'}}>Identity Labels (when imbalanced)</label>
                   <div style={{fontSize: '0.65rem', color: '#6a6866', marginBottom: '6px'}}>
                     Spread &lt; {editConfig?.vibes?.balancedThreshold || 0.18} = Balanced | {editConfig?.vibes?.balancedThreshold || 0.18}–{editConfig?.vibes?.strongImbalanceThreshold || 0.30} = Mild | &gt; {editConfig?.vibes?.strongImbalanceThreshold || 0.30} = Strong
                   </div>
                   <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem'}}>
                     <thead>
-                      <tr style={{borderBottom: '1px solid #4a4a4a'}}>
+                      <tr style={{borderBottom: `1px solid ${T.panelBorder}`}}>
                         <th style={{textAlign: 'left', padding: '4px 6px', color: '#6a6866', fontWeight: 500}}>Condition</th>
                         <th style={{textAlign: 'left', padding: '4px 6px', color: '#D4A035', fontWeight: 500}}>Mild</th>
                         <th style={{textAlign: 'left', padding: '4px 6px', color: '#c47e7e', fontWeight: 500}}>Strong</th>
@@ -1936,12 +1937,12 @@ function App() {
                       {(() => {
                         const labels = editConfig?.vibes?.branchLabels || {};
                         const rows = [
-                          { key: 'highLivingStandards', label: 'High LS', color: '#8cc4a0' },
-                          { key: 'lowLivingStandards', label: 'Low LS', color: '#8cc4a0' },
-                          { key: 'highProductivity', label: 'High PR', color: '#7eaac4' },
-                          { key: 'lowProductivity', label: 'Low PR', color: '#7eaac4' },
-                          { key: 'highPartytime', label: 'High PT', color: '#D4A035' },
-                          { key: 'lowPartytime', label: 'Low PT', color: '#D4A035' }
+                          { key: 'highLivingStandards', label: 'Overindex LS', color: '#8cc4a0' },
+                          { key: 'lowLivingStandards', label: 'Underindex LS', color: '#8cc4a0' },
+                          { key: 'highProductivity', label: 'Overindex PR', color: '#7eaac4' },
+                          { key: 'lowProductivity', label: 'Underindex PR', color: '#7eaac4' },
+                          { key: 'highPartytime', label: 'Overindex PT', color: '#D4A035' },
+                          { key: 'lowPartytime', label: 'Underindex PT', color: '#D4A035' }
                         ];
                         const updateLabel = (key, severity, val) => {
                           const bl = {...(editConfig.vibes.branchLabels)};
@@ -1949,7 +1950,7 @@ function App() {
                           setEditConfig({...editConfig, vibes: {...editConfig.vibes, branchLabels: bl}});
                         };
                         return rows.map(r => (
-                          <tr key={r.key} style={{borderBottom: '1px solid #2d3748'}}>
+                          <tr key={r.key} style={{borderBottom: `1px solid ${T.panelBg}`}}>
                             <td style={{padding: '4px 6px', color: r.color}}>{r.label}</td>
                             <td style={{padding: '2px 4px'}}><input className="config-table-input" style={{width: '100%', textAlign: 'left', color: '#D4A035'}}
                               value={labels[r.key]?.mild || ''} onChange={(e) => updateLabel(r.key, 'mild', e.target.value)} /></td>
@@ -2003,29 +2004,20 @@ function App() {
               <p className="config-hint">Lower curve = steeper progression. At LS=35, £100 is 'Fair'. At LS=100, max tolerable rent ~£500.</p>
               <div className="section-divider-line"></div>
               <div className="config-field">
-                <label>Custom Scaling</label>
-                <input type="checkbox" checked={editConfig?.health?.livingStandards?.useCustomScaling ?? false}
-                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, useCustomScaling: e.target.checked}}})} />
+                <label>ref0</label>
+                <input type="number" step="0.05" value={editConfig?.health?.livingStandards?.ref0 ?? 0.5}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, ref0: parseFloat(e.target.value)}}})} />
               </div>
-              {editConfig?.health?.livingStandards?.useCustomScaling && (
-                <>
-                  <div className="config-field">
-                    <label>ref0</label>
-                    <input type="number" step="0.05" value={editConfig?.health?.livingStandards?.ref0 ?? 0.5} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, ref0: parseFloat(e.target.value)}}})} />
-                  </div>
-                  <div className="config-field">
-                    <label>alpha</label>
-                    <input type="number" step="0.05" value={editConfig?.health?.livingStandards?.alpha ?? 0.15} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, alpha: parseFloat(e.target.value)}}})} />
-                  </div>
-                  <div className="config-field">
-                    <label>p (curve)</label>
-                    <input type="number" step="0.5" value={editConfig?.health?.livingStandards?.p ?? 2} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, p: parseFloat(e.target.value)}}})} />
-                  </div>
-                </>
-              )}
+              <div className="config-field">
+                <label>alpha</label>
+                <input type="number" step="0.05" value={editConfig?.health?.livingStandards?.alpha ?? 0.15}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, alpha: parseFloat(e.target.value)}}})} />
+              </div>
+              <div className="config-field">
+                <label>p (curve)</label>
+                <input type="number" step="0.5" value={editConfig?.health?.livingStandards?.p ?? 2}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, livingStandards: {...editConfig.health?.livingStandards, p: parseFloat(e.target.value)}}})} />
+              </div>
             </div>
 
             <div className="config-section">
@@ -2069,33 +2061,24 @@ function App() {
               <p className="config-hint">At PR={editConfig?.health?.churnBaselinePR ?? 35}, churn is neutral. Above reduces, below increases churn by {((editConfig?.health?.churnScalePerPoint ?? 0.01) * 100).toFixed(1)}% per point.</p>
               <div className="section-divider-line"></div>
               <div className="config-field">
-                <label>Custom Scaling</label>
-                <input type="checkbox" checked={editConfig?.health?.productivity?.useCustomScaling ?? false}
-                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, useCustomScaling: e.target.checked}}})} />
+                <label>ref0</label>
+                <input type="number" step="0.05" value={editConfig?.health?.productivity?.ref0 ?? 0.5}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, ref0: parseFloat(e.target.value)}}})} />
               </div>
-              {editConfig?.health?.productivity?.useCustomScaling && (
-                <>
-                  <div className="config-field">
-                    <label>ref0</label>
-                    <input type="number" step="0.05" value={editConfig?.health?.productivity?.ref0 ?? 0.5} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, ref0: parseFloat(e.target.value)}}})} />
-                  </div>
-                  <div className="config-field">
-                    <label>alpha</label>
-                    <input type="number" step="0.05" value={editConfig?.health?.productivity?.alpha ?? 0.15} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, alpha: parseFloat(e.target.value)}}})} />
-                  </div>
-                  <div className="config-field">
-                    <label>p (curve)</label>
-                    <input type="number" step="0.5" value={editConfig?.health?.productivity?.p ?? 2} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, p: parseFloat(e.target.value)}}})} />
-                  </div>
-                </>
-              )}
+              <div className="config-field">
+                <label>alpha</label>
+                <input type="number" step="0.05" value={editConfig?.health?.productivity?.alpha ?? 0.15}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, alpha: parseFloat(e.target.value)}}})} />
+              </div>
+              <div className="config-field">
+                <label>p (curve)</label>
+                <input type="number" step="0.5" value={editConfig?.health?.productivity?.p ?? 2}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, productivity: {...editConfig.health?.productivity, p: parseFloat(e.target.value)}}})} />
+              </div>
             </div>
 
             <div className="config-section">
-              <h3>Partytime <span className="info-icon" onClick={() => setInfoPopup('partytime')}>&#9432;</span></h3>
+              <h3>Leisure <span className="info-icon" onClick={() => setInfoPopup('partytime')}>&#9432;</span></h3>
               <div className="config-field">
                 <label>Fun wt</label>
                 <input type="number" step="0.1" value={editConfig?.health?.partytime?.funWeight ?? 1.0} 
@@ -2115,29 +2098,20 @@ function App() {
               <p className="config-hint">At PT={editConfig?.health?.recruitBaselinePT ?? 35}, get base slots. Each +{editConfig?.health?.recruitScalePerSlot ?? 15} PT adds +1 slot.</p>
               <div className="section-divider-line"></div>
               <div className="config-field">
-                <label>Custom Scaling</label>
-                <input type="checkbox" checked={editConfig?.health?.partytime?.useCustomScaling ?? false}
-                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, useCustomScaling: e.target.checked}}})} />
+                <label>ref0</label>
+                <input type="number" step="0.05" value={editConfig?.health?.partytime?.ref0 ?? 0.5}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, ref0: parseFloat(e.target.value)}}})} />
               </div>
-              {editConfig?.health?.partytime?.useCustomScaling && (
-                <>
-                  <div className="config-field">
-                    <label>ref0</label>
-                    <input type="number" step="0.05" value={editConfig?.health?.partytime?.ref0 ?? 0.5} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, ref0: parseFloat(e.target.value)}}})} />
-                  </div>
-                  <div className="config-field">
-                    <label>alpha</label>
-                    <input type="number" step="0.05" value={editConfig?.health?.partytime?.alpha ?? 0.15} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, alpha: parseFloat(e.target.value)}}})} />
-                  </div>
-                  <div className="config-field">
-                    <label>p (curve)</label>
-                    <input type="number" step="0.5" value={editConfig?.health?.partytime?.p ?? 2} 
-                      onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, p: parseFloat(e.target.value)}}})} />
-                  </div>
-                </>
-              )}
+              <div className="config-field">
+                <label>alpha</label>
+                <input type="number" step="0.05" value={editConfig?.health?.partytime?.alpha ?? 0.15}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, alpha: parseFloat(e.target.value)}}})} />
+              </div>
+              <div className="config-field">
+                <label>p (curve)</label>
+                <input type="number" step="0.5" value={editConfig?.health?.partytime?.p ?? 2}
+                  onChange={(e) => setEditConfig({...editConfig, health: {...editConfig.health, partytime: {...editConfig.health?.partytime, p: parseFloat(e.target.value)}}})} />
+              </div>
             </div>
           </div>
 
@@ -2159,8 +2133,8 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>baseMult</label>
-                      <input type="number" step="1" min="1" value={editConfig?.primitives?.crowding?.baseMult ?? 50}
-                        onChange={(e) => updatePrimitiveConfig('crowding', 'baseMult', parseInt(e.target.value) || 50)} />
+                      <input type="number" step="1" min="1" value={editConfig?.primitives?.crowding?.baseMult ?? 43}
+                        onChange={(e) => updatePrimitiveConfig('crowding', 'baseMult', parseInt(e.target.value) || 43)} />
                     </div>
                     <div className="config-field">
                       <label>shareTolCoeff</label>
@@ -2194,7 +2168,7 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>baseSocial</label>
-                      <input type="number" step="0.5" value={editConfig?.primitives?.noise?.baseSocial ?? 5}
+                      <input type="number" step="0.25" value={editConfig?.primitives?.noise?.baseSocial ?? 2.25}
                         onChange={(e) => updatePrimitiveConfig('noise', 'baseSocial', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
@@ -2204,12 +2178,12 @@ function App() {
                     </div>
                     <div className="config-field">
                       <label>socioMult</label>
-                      <input type="number" step="0.05" value={editConfig?.primitives?.noise?.socioMult ?? 0.1}
+                      <input type="number" step="0.05" value={editConfig?.primitives?.noise?.socioMult ?? 0.25}
                         onChange={(e) => updatePrimitiveConfig('noise', 'socioMult', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>considMult</label>
-                      <input type="number" step="0.05" value={editConfig?.primitives?.noise?.considMult ?? 0.3}
+                      <input type="number" step="0.05" value={editConfig?.primitives?.noise?.considMult ?? 0.25}
                         onChange={(e) => updatePrimitiveConfig('noise', 'considMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
@@ -2239,17 +2213,17 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>outputRate</label>
-                      <input type="number" step="1" value={editConfig?.primitives?.nutrition?.outputRate ?? 10}
+                      <input type="number" step="0.1" value={editConfig?.primitives?.nutrition?.outputRate ?? 7.3}
                         onChange={(e) => updatePrimitiveConfig('nutrition', 'outputRate', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>consumptionRate</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.nutrition?.consumptionRate ?? 1}
+                      <input type="number" step="1" value={editConfig?.primitives?.nutrition?.consumptionRate ?? 13}
                         onChange={(e) => updatePrimitiveConfig('nutrition', 'consumptionRate', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>skillMult</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.nutrition?.skillMult ?? 0.3}
+                      <input type="number" step="0.05" value={editConfig?.primitives?.nutrition?.skillMult ?? 0.25}
                         onChange={(e) => updatePrimitiveConfig('nutrition', 'skillMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
@@ -2269,17 +2243,17 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>outputRate</label>
-                      <input type="number" step="1" value={editConfig?.primitives?.fun?.outputRate ?? 10}
+                      <input type="number" step="0.1" value={editConfig?.primitives?.fun?.outputRate ?? 9.2}
                         onChange={(e) => updatePrimitiveConfig('fun', 'outputRate', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>consumptionRate</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.fun?.consumptionRate ?? 1}
+                      <input type="number" step="1" value={editConfig?.primitives?.fun?.consumptionRate ?? 16}
                         onChange={(e) => updatePrimitiveConfig('fun', 'consumptionRate', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>skillMult</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.fun?.skillMult ?? 0.3}
+                      <input type="number" step="0.05" value={editConfig?.primitives?.fun?.skillMult ?? 0.25}
                         onChange={(e) => updatePrimitiveConfig('fun', 'skillMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
@@ -2299,17 +2273,17 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>outputRate</label>
-                      <input type="number" step="1" value={editConfig?.primitives?.drive?.outputRate ?? 10}
+                      <input type="number" step="0.1" value={editConfig?.primitives?.drive?.outputRate ?? 6.3}
                         onChange={(e) => updatePrimitiveConfig('drive', 'outputRate', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>slackRate</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.drive?.slackRate ?? 1}
+                      <input type="number" step="1" value={editConfig?.primitives?.drive?.slackRate ?? 11}
                         onChange={(e) => updatePrimitiveConfig('drive', 'slackRate', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>skillMult</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.drive?.skillMult ?? 0.3}
+                      <input type="number" step="0.05" value={editConfig?.primitives?.drive?.skillMult ?? 0.25}
                         onChange={(e) => updatePrimitiveConfig('drive', 'skillMult', parseFloat(e.target.value))} />
                     </div>
                   </div>
@@ -2331,17 +2305,17 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>messPerResident</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.cleanliness?.messPerResident ?? 1.2}
+                      <input type="number" step="0.01" value={editConfig?.primitives?.cleanliness?.messPerResident ?? 0.1}
                         onChange={(e) => updatePrimitiveConfig('cleanliness', 'messPerResident', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>cleanBase</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.cleanliness?.cleanBase ?? 3}
+                      <input type="number" step="0.01" value={editConfig?.primitives?.cleanliness?.cleanBase ?? 0.52}
                         onChange={(e) => updatePrimitiveConfig('cleanliness', 'cleanBase', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>skillMult</label>
-                      <input type="number" step="0.1" value={editConfig?.primitives?.cleanliness?.skillMult ?? 0.1}
+                      <input type="number" step="0.05" value={editConfig?.primitives?.cleanliness?.skillMult ?? 0.25}
                         onChange={(e) => updatePrimitiveConfig('cleanliness', 'skillMult', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
@@ -2371,12 +2345,12 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>wearPerResident</label>
-                      <input type="number" step="0.5" value={editConfig?.primitives?.maintenance?.wearPerResident ?? 1}
+                      <input type="number" step="0.01" value={editConfig?.primitives?.maintenance?.wearPerResident ?? 0.08}
                         onChange={(e) => updatePrimitiveConfig('maintenance', 'wearPerResident', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
                       <label>repairBase</label>
-                      <input type="number" step="0.5" value={editConfig?.primitives?.maintenance?.repairBase ?? 3}
+                      <input type="number" step="0.01" value={editConfig?.primitives?.maintenance?.repairBase ?? 0.54}
                         onChange={(e) => updatePrimitiveConfig('maintenance', 'repairBase', parseFloat(e.target.value))} />
                     </div>
                   </div>
@@ -2408,7 +2382,7 @@ function App() {
                   <div className="primitive-controls">
                     <div className="config-field">
                       <label>exertBase</label>
-                      <input type="number" step="0.01" value={editConfig?.primitives?.fatigue?.exertBase ?? 0.62}
+                      <input type="number" step="0.01" value={editConfig?.primitives?.fatigue?.exertBase ?? 0.59}
                         onChange={(e) => updatePrimitiveConfig('fatigue', 'exertBase', parseFloat(e.target.value))} />
                     </div>
                     <div className="config-field">
@@ -2457,7 +2431,7 @@ function App() {
           <div className="dev-tools-grid three-col">
             <div className="config-section">
               <h3>Budgets</h3>
-              <div style={{fontSize: '0.7rem', color: '#a0aec0', marginBottom: '6px'}}>Starting £/week per category (+ £/capita neutral point)</div>
+              <div style={{fontSize: '0.7rem', color: T.textSecondary, marginBottom: '6px'}}>Starting £/week per category (+ £/capita neutral point)</div>
               {[
                 { key: 'nutrition', label: 'Ingredients', def: 50, bpc: 15 },
                 { key: 'cleanliness', label: 'Cleaning supplies', def: 15, bpc: 5 },
@@ -2487,7 +2461,7 @@ function App() {
                   }} />
                 </div>
               ))}
-              <div style={{fontSize: '0.7rem', color: '#a0aec0', marginTop: '8px', marginBottom: '4px'}}>Budget curve</div>
+              <div style={{fontSize: '0.7rem', color: T.textSecondary, marginTop: '8px', marginBottom: '4px'}}>Budget curve</div>
               {[
                 { field: 'scaleExp', label: 'Scale exp', step: 0.05, def: 0.7 },
                 { field: 'floor', label: 'Floor (£0)', step: 0.05, def: 0.5 },
@@ -2512,7 +2486,7 @@ function App() {
               <h3>Policies</h3>
               <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem'}}>
                 <thead>
-                  <tr style={{borderBottom: '1px solid #4a5568', fontSize: '0.7rem', color: '#a0aec0'}}>
+                  <tr style={{borderBottom: `1px solid ${T.panelBorder}`, fontSize: '0.7rem', color: T.textSecondary}}>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px 0', fontWeight: 400}}>Name</th>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px', fontWeight: 400}}>Effect</th>
                     <th style={{textAlign: 'right', padding: '2px 8px 4px', fontWeight: 400}}>Exclude %</th>
@@ -2525,9 +2499,9 @@ function App() {
                     const ocadoPct = gameState.techConfig?.ocado?.effectPercent || 15;
                     const desc = policy.description.replace('{ocadoPct}', ocadoPct);
                     return (
-                      <tr key={policy.id} style={{borderBottom: '1px solid #2d3748'}}>
+                      <tr key={policy.id} style={{borderBottom: `1px solid ${T.panelBorder}`}}>
                         <td style={{padding: '4px 8px 4px 0', whiteSpace: 'nowrap'}}>{policy.name}</td>
-                        <td style={{padding: '4px 8px', color: '#a0aec0', fontSize: '0.75rem'}}>{desc}</td>
+                        <td style={{padding: '4px 8px', color: T.textSecondary, fontSize: '0.75rem'}}>{desc}</td>
                         <td style={{padding: '4px 8px', textAlign: 'right'}}>
                           {policy.type === 'exclude_worst' ? (
                             <input type="number" step="0.05" min="0" max="1" className="config-table-input"
@@ -2535,10 +2509,10 @@ function App() {
                               onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), [policy.id]: {...(prev.policyConfig?.[policy.id] || {}), excludePercent: parseFloat(e.target.value)}}}))}
                             />
                           ) : (
-                            <span style={{color: '#6a6866', fontSize: '0.75rem'}}>—</span>
+                            <span style={{color: T.textMuted, fontSize: '0.75rem'}}>—</span>
                           )}
                         </td>
-                        <td style={{padding: '4px 0 4px 8px', textAlign: 'right', whiteSpace: 'nowrap', color: techUnlock ? '#ecc94b' : '#48bb78', fontSize: '0.75rem'}}>
+                        <td style={{padding: '4px 0 4px 8px', textAlign: 'right', whiteSpace: 'nowrap', color: techUnlock ? T.accentBright : T.positive, fontSize: '0.75rem'}}>
                           {techUnlock ? techUnlock.name : 'Default'}
                         </td>
                       </tr>
@@ -2546,30 +2520,28 @@ function App() {
                   })}
                 </tbody>
               </table>
-              <div style={{borderTop: '1px solid #4a4a4a', marginTop: '8px', paddingTop: '8px'}}>
-                <div style={{fontSize: '0.7rem', color: '#9a9690', marginBottom: '6px'}}>Fun penalty</div>
-                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                  <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
-                    <label title="Number of active policies before Fun penalty applies">Fun threshold</label>
-                    <input type="number" step="1" min="1" style={{width: '70px'}}
-                      value={editConfig?.policyConfig?.funPenalty?.threshold ?? 3}
-                      onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), threshold: parseInt(e.target.value)}}}))}
-                    />
-                  </div>
-                  <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
-                    <label title="Penalty curve steepness for Fun reduction">Fun K</label>
-                    <input type="number" step="0.05" style={{width: '70px'}}
-                      value={editConfig?.policyConfig?.funPenalty?.K ?? 0.15}
-                      onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), K: parseFloat(e.target.value)}}}))}
-                    />
-                  </div>
-                  <div className="config-field" style={{flex: 'none', marginBottom: 0}}>
-                    <label title="Penalty curve exponent for Fun reduction">Fun P</label>
-                    <input type="number" step="0.1" style={{width: '70px'}}
-                      value={editConfig?.policyConfig?.funPenalty?.P ?? 1.5}
-                      onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), P: parseFloat(e.target.value)}}}))}
-                    />
-                  </div>
+              <div style={{borderTop: `1px solid ${T.panelBorder}`, marginTop: '8px', paddingTop: '8px'}}>
+                <div style={{fontSize: '0.7rem', color: T.textSecondary, marginBottom: '8px'}}>Fun penalty (too many active policies)</div>
+                <div className="config-field">
+                  <label title="Number of active policies before Fun penalty applies">Threshold</label>
+                  <input type="number" step="1" min="1"
+                    value={editConfig?.policyConfig?.funPenalty?.threshold ?? 3}
+                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), threshold: parseInt(e.target.value)}}}))}
+                  />
+                </div>
+                <div className="config-field">
+                  <label title="Penalty curve steepness">K</label>
+                  <input type="number" step="0.05"
+                    value={editConfig?.policyConfig?.funPenalty?.K ?? 0.15}
+                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), K: parseFloat(e.target.value)}}}))}
+                  />
+                </div>
+                <div className="config-field">
+                  <label title="Penalty curve exponent">P</label>
+                  <input type="number" step="0.1"
+                    value={editConfig?.policyConfig?.funPenalty?.P ?? 1.5}
+                    onChange={(e) => setEditConfig(prev => ({...prev, policyConfig: {...(prev.policyConfig || {}), funPenalty: {...(prev.policyConfig?.funPenalty || {}), P: parseFloat(e.target.value)}}}))}
+                  />
                 </div>
               </div>
             </div>
@@ -2578,21 +2550,21 @@ function App() {
           <div className="dev-tools-grid three-col">
             <div className="config-section">
               <h3>Scoring</h3>
-              <p style={{color: '#9a9690', fontSize: '0.7rem', marginBottom: '8px', lineHeight: '1.5'}}>
+              <p style={{color: T.textSecondary, fontSize: '0.7rem', marginBottom: '8px', lineHeight: '1.5'}}>
                 Weekly points are calculated each week-end:
               </p>
               <div style={{background: 'rgba(212,160,53,0.10)', padding: '8px', marginBottom: '10px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#D4A035'}}>
                 pts = floor(vibes × popScale × harmony × scale)
               </div>
-              <div style={{fontSize: '0.7rem', color: '#9a9690', lineHeight: '1.6', marginBottom: '10px'}}>
+              <div style={{fontSize: '0.7rem', color: T.textSecondary, lineHeight: '1.6', marginBottom: '10px'}}>
                 <div><strong style={{color: '#e2ddd4'}}>vibes</strong> — overall vibes score (0–100)</div>
                 <div><strong style={{color: '#e2ddd4'}}>popScale</strong> — multiplier from population bracket lookup</div>
                 <div><strong style={{color: '#e2ddd4'}}>harmony</strong> = harmonyFloor + harmonyWeight × (min/max health metric)</div>
                 <div style={{marginLeft: '12px', color: '#6a6866'}}>Rewards balanced LS/PR/PT; ranges {(editConfig?.scoreConfig?.weeklyFormula?.harmonyFloor ?? 0.7).toFixed(1)}–{((editConfig?.scoreConfig?.weeklyFormula?.harmonyFloor ?? 0.7) + (editConfig?.scoreConfig?.weeklyFormula?.harmonyWeight ?? 0.3)).toFixed(1)}</div>
                 <div><strong style={{color: '#e2ddd4'}}>scale</strong> — global multiplier for point values</div>
               </div>
-              <div style={{borderTop: '1px solid #4a4a4a', paddingTop: '8px'}}>
-                <div style={{fontSize: '0.7rem', color: '#9a9690', marginBottom: '6px'}}>Formula parameters</div>
+              <div style={{borderTop: `1px solid ${T.panelBorder}`, paddingTop: '8px'}}>
+                <div style={{fontSize: '0.7rem', color: T.textSecondary, marginBottom: '6px'}}>Formula parameters</div>
                 {[
                   { field: 'scale', label: 'Scale', step: 1, def: 10 },
                   { field: 'harmonyFloor', label: 'Harmony floor', step: 0.05, def: 0.7 },
@@ -2611,7 +2583,7 @@ function App() {
                     }} />
                   </div>
                 ))}
-                <div style={{fontSize: '0.7rem', color: '#9a9690', marginTop: '8px', marginBottom: '4px'}}>Population scale brackets</div>
+                <div style={{fontSize: '0.7rem', color: T.textSecondary, marginTop: '8px', marginBottom: '4px'}}>Population scale brackets</div>
                 {(editConfig?.scoreConfig?.weeklyFormula?.popScaleBrackets || [
                   { maxN: 4, mult: 1.0 }, { maxN: 8, mult: 1.5 }, { maxN: 12, mult: 2.0 }, { maxN: Infinity, mult: 3.0 }
                 ]).map((b, i) => (
@@ -2650,7 +2622,7 @@ function App() {
               <div style={{flex: 1, minHeight: 0, overflowY: 'auto'}}>
               <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem'}}>
                 <thead>
-                  <tr style={{borderBottom: '1px solid #4a4a4a', fontSize: '0.7rem', color: '#9a9690'}}>
+                  <tr style={{borderBottom: `1px solid ${T.panelBorder}`, fontSize: '0.7rem', color: T.textSecondary}}>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px 0', fontWeight: 400}}>Badge</th>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px', fontWeight: 400}}>Category</th>
                     <th style={{textAlign: 'left', padding: '2px 8px 4px', fontWeight: 400}}>Condition</th>
@@ -2672,12 +2644,12 @@ function App() {
                       if (c.any) condStr += ' (any)';
                       if (c.id) condStr += `: ${c.id}`;
                       return (
-                        <tr key={m.id} style={{borderBottom: '1px solid #2d3748'}}>
+                        <tr key={m.id} style={{borderBottom: `1px solid ${T.panelBorder}`}}>
                           <td style={{padding: '4px 8px 4px 0', whiteSpace: 'nowrap'}}>{m.badgeName}</td>
-                          <td style={{padding: '4px 8px', color: '#9a9690', fontSize: '0.75rem'}}>{m.category}</td>
-                          <td style={{padding: '4px 8px', color: '#6a6866', fontSize: '0.7rem', fontFamily: 'monospace'}}>{condStr}</td>
-                          <td style={{padding: '4px 8px', textAlign: 'right', color: '#b07cc8'}}>{m.points}</td>
-                          <td style={{padding: '4px 0 4px 8px', color: '#6a6866', fontSize: '0.75rem'}}>{m.flavour}</td>
+                          <td style={{padding: '4px 8px', color: T.textSecondary, fontSize: '0.75rem'}}>{m.category}</td>
+                          <td style={{padding: '4px 8px', color: T.textMuted, fontSize: '0.7rem', fontFamily: 'monospace'}}>{condStr}</td>
+                          <td style={{padding: '4px 8px', textAlign: 'right', color: T.accentBright}}>{m.points}</td>
+                          <td style={{padding: '4px 0 4px 8px', color: T.textMuted, fontSize: '0.75rem'}}>{m.flavour}</td>
                         </tr>
                       );
                     });
@@ -2691,11 +2663,11 @@ function App() {
           <div className="dev-tools-grid">
             <div className="config-section" style={{gridColumn: '1 / -1'}}>
               <h3>Tech Tree Configuration</h3>
-              <p style={{color: '#a0aec0', fontSize: '0.75rem', marginBottom: '8px'}}>Configure research costs and effects for each technology. Changes apply on Reset.</p>
+              <p style={{color: T.textSecondary, fontSize: '0.75rem', marginBottom: '8px'}}>Configure research costs and effects for each technology. Changes apply on Reset.</p>
               <div ref={techTreeContainerRef}>
               {['livingStandards', 'productivity', 'fun'].map(treeName => {
-                const treeLabel = treeName === 'livingStandards' ? 'Quality of Life' : treeName === 'productivity' ? 'Productivity' : 'Fun';
-                const treeColor = treeName === 'livingStandards' ? '#4fd1c5' : treeName === 'productivity' ? '#4299e1' : '#b794f4';
+                const treeLabel = TREE_LABELS[treeName] || treeName;
+                const treeColor = TREE_COLORS[treeName] || T.textMuted;
                 const treeTechs = (gameState.techTree || []).filter(t => t.tree === treeName);
                 return (
                   <div key={treeName} data-tree-name={treeName} style={{marginBottom: '16px', position: 'relative'}}>
@@ -2720,14 +2692,14 @@ function App() {
                         };
                         const unlockedBuilding = (gameState.buildings || []).find(b => b.techRequired === tech.id);
                         return (
-                          <div key={tech.id} data-tech-id={tech.id} data-tech-level={tech.level} data-tech-parent={tech.parent || ''} style={{background: '#2d3748', borderRadius: '6px', padding: '8px 10px', border: `1px solid ${tech.available ? treeColor + '44' : '#4a556833'}`}}>
+                          <div key={tech.id} data-tech-id={tech.id} data-tech-level={tech.level} data-tech-parent={tech.parent || ''} style={{background: T.panelBg, borderRadius: '6px', padding: '8px 10px', border: `1px solid ${tech.available ? treeColor + '44' : T.panelBorder + '33'}`}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px'}}>
-                              <span style={{fontWeight: 600, fontSize: '0.8rem', color: tech.available ? '#e2e8f0' : '#718096'}}>{tech.name}</span>
+                              <span style={{fontWeight: 600, fontSize: '0.8rem', color: tech.available ? T.textPrimary : T.textMuted}}>{tech.name}</span>
                               <span style={{fontSize: '0.6rem', background: treeColor + '22', color: treeColor, padding: '1px 6px', borderRadius: '4px', textTransform: 'capitalize'}}>{tech.type.replace('_', ' ')}</span>
                             </div>
-                            {unlockedBuilding && <div style={{fontSize: '0.65rem', color: '#b07cc8', marginBottom: '4px'}}>Unlocks: {unlockedBuilding.name}</div>}
-                            {!unlockedBuilding && (tech.type === 'building' || tech.type === 'upgrade') && <div style={{fontSize: '0.65rem', color: '#718096', marginBottom: '4px'}}>Building: TBC</div>}
-                            {!tech.available && <div style={{fontSize: '0.65rem', color: '#718096', marginBottom: '6px'}}>Coming Soon</div>}
+                            {unlockedBuilding && <div style={{fontSize: '0.65rem', color: T.accentBright, marginBottom: '4px'}}>Unlocks: {unlockedBuilding.name}</div>}
+                            {!unlockedBuilding && (tech.type === 'building' || tech.type === 'upgrade') && <div style={{fontSize: '0.65rem', color: T.textMuted, marginBottom: '4px'}}>Building: TBC</div>}
+                            {!tech.available && <div style={{fontSize: '0.65rem', color: T.textMuted, marginBottom: '6px'}}>Coming Soon</div>}
                             <div className="config-field" style={{marginBottom: '4px'}}>
                               <label style={{fontSize: '0.7rem'}}>Cost</label>
                               <input type="number" step="100" min="0"
@@ -2763,7 +2735,7 @@ function App() {
                               </div>
                             )}
                             {tech.type === 'upgrade' && tech.id === 'great_hall' && (
-                              <div style={{fontSize: '0.65rem', color: '#718096', marginTop: '4px'}}>
+                              <div style={{fontSize: '0.65rem', color: T.textMuted, marginTop: '4px'}}>
                                 Stats editable in Manage Buildings
                               </div>
                             )}
@@ -2800,7 +2772,7 @@ function App() {
                         viewBox={`0 0 ${techConnectors[treeName].width} ${techConnectors[treeName].height}`}
                         preserveAspectRatio="none">
                         {techConnectors[treeName].paths.map((d, i) => (
-                          <path key={i} d={d} fill="none" stroke="#4a5568" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                          <path key={i} d={d} fill="none" stroke={T.panelBorder} strokeWidth="2" vectorEffect="non-scaling-stroke" />
                         ))}
                       </svg>
                     )}
@@ -2922,7 +2894,7 @@ function App() {
             )}
             {infoPopup === 'partytime' && (
               <>
-                <h2>Partytime</h2>
+                <h2>Leisure</h2>
                 <div className="formula-section">
                   <h4>Raw Formula</h4>
                   <code>PT_raw = baseline(Fun) × damp(Fatigue, w_PT)</code>
@@ -2953,7 +2925,7 @@ function App() {
                   <ul>
                     <li><strong>Sociability</strong> - Boosts Fun</li>
                     <li><strong>Party Stamina</strong> - Boosts Fun and Fatigue recovery</li>
-                    <li><strong>Consideration</strong> - No impact on Partytime</li>
+                    <li><strong>Consideration</strong> - No impact on Leisure</li>
                   </ul>
                 </div>
                 <div className="formula-section effect">
@@ -2971,12 +2943,12 @@ function App() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <h2>Build</h2>
-              <span style={{background: (gameState.buildsThisWeek || 0) >= (gameState.config?.buildsPerWeek ?? 1) ? '#e53e3e' : '#4a5568', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600}}>
+              <span style={{background: (gameState.buildsThisWeek || 0) >= (gameState.config?.buildsPerWeek ?? 1) ? T.negative : T.panelBorder, color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600}}>
                 {Math.max(0, (gameState.config?.buildsPerWeek ?? 1) - (gameState.buildsThisWeek || 0))} remaining
               </span>
             </div>
             {(gameState.buildsThisWeek || 0) >= (gameState.config?.buildsPerWeek ?? 1) && (
-              <p style={{color: '#e53e3e', fontSize: '0.85rem', marginBottom: '8px'}}>Build limit reached for this week.</p>
+              <p style={{color: T.negative, fontSize: '0.85rem', marginBottom: '8px'}}>Build limit reached for this week.</p>
             )}
             {gameState.buildings?.filter(b => b.buildable && b.cost !== null && (!b.techRequired || gameState.researchedTechs?.includes(b.techRequired))).map(building => (
               <div key={building.id} className="building-card">
@@ -2998,7 +2970,7 @@ function App() {
                     const gh = gameState.buildings?.find(b => b.id === 'great_hall');
                     if (!gh) return null;
                     return (
-                      <div style={{marginTop: '4px', padding: '3px 6px', background: '#4299e133', borderRadius: '4px', fontSize: '0.75rem', color: '#4299e1'}}>
+                      <div style={{marginTop: '4px', padding: '3px 6px', background: T.pr + '33', borderRadius: '4px', fontSize: '0.75rem', color: T.pr}}>
                         Great Hall: Cap {gh.capacity}, Fun x{gh.funMult ?? 1.3}, Drive x{gh.driveMult ?? 1.2}
                       </div>
                     );
@@ -3024,21 +2996,21 @@ function App() {
         <div className="modal-overlay" onClick={() => setBuildConfirm(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '360px'}}>
             <h2>Confirm Build</h2>
-            <p style={{color: '#e2e8f0', fontSize: '0.9rem', margin: '12px 0'}}>
-              Build a new <span style={{color: '#48bb78', fontWeight: 600}}>{buildConfirm.name}</span>?
+            <p style={{color: T.textPrimary, fontSize: '0.9rem', margin: '12px 0'}}>
+              Build a new <span style={{color: T.positive, fontWeight: 600}}>{buildConfirm.name}</span>?
             </p>
-            <div style={{background: '#1a202c', borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
+            <div style={{background: T.bg, borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Cost</span>
-                <span style={{color: '#e53e3e'}}>-£{buildConfirm.cost?.toLocaleString()}</span>
+                <span style={{color: T.textSecondary}}>Cost</span>
+                <span style={{color: T.negative}}>-£{buildConfirm.cost?.toLocaleString()}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Treasury after</span>
-                <span style={{color: '#e2e8f0'}}>£{(gameState.treasury - (buildConfirm.cost || 0)).toLocaleString()}</span>
+                <span style={{color: T.textSecondary}}>Treasury after</span>
+                <span style={{color: T.textPrimary}}>£{(gameState.treasury - (buildConfirm.cost || 0)).toLocaleString()}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#a0aec0'}}>New count</span>
-                <span style={{color: '#e2e8f0'}}>{(buildConfirm.count || 0) + 1}</span>
+                <span style={{color: T.textSecondary}}>New count</span>
+                <span style={{color: T.textPrimary}}>{(buildConfirm.count || 0) + 1}</span>
               </div>
             </div>
             <div style={{display: 'flex', gap: '8px'}}>
@@ -3057,22 +3029,22 @@ function App() {
         <div className="modal-overlay" onClick={() => setBuildComplete(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '360px', textAlign: 'center'}}>
             <div style={{fontSize: '2rem', marginBottom: '8px'}}>&#127959;</div>
-            <h2 style={{color: '#48bb78'}}>Building Complete</h2>
-            <p style={{color: '#e2e8f0', fontSize: '0.9rem', margin: '12px 0'}}>
+            <h2 style={{color: T.positive}}>Building Complete</h2>
+            <p style={{color: T.textPrimary, fontSize: '0.9rem', margin: '12px 0'}}>
               New <span style={{fontWeight: 600}}>{buildComplete.name}</span> built successfully.
             </p>
-            <div style={{background: '#1a202c', borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
+            <div style={{background: T.bg, borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Total {buildComplete.name}</span>
-                <span style={{color: '#e2e8f0'}}>{buildComplete.count}</span>
+                <span style={{color: T.textSecondary}}>Total {buildComplete.name}</span>
+                <span style={{color: T.textPrimary}}>{buildComplete.count}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Cost</span>
-                <span style={{color: '#e53e3e'}}>-£{buildComplete.cost?.toLocaleString()}</span>
+                <span style={{color: T.textSecondary}}>Cost</span>
+                <span style={{color: T.negative}}>-£{buildComplete.cost?.toLocaleString()}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#a0aec0'}}>Total Capacity</span>
-                <span style={{color: '#48bb78'}}>{buildComplete.capacity}</span>
+                <span style={{color: T.textSecondary}}>Total Capacity</span>
+                <span style={{color: T.positive}}>{buildComplete.capacity}</span>
               </div>
             </div>
             <button className="action-button" onClick={() => setBuildComplete(null)}>
@@ -3095,24 +3067,24 @@ function App() {
               <h2>Policies</h2>
               <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
                 {policyLimitActive && (
-                  <span style={{background: changeLimitReached ? '#e53e3e' : '#4a5568', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem'}}>
+                  <span style={{background: changeLimitReached ? T.negative : T.panelBorder, color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem'}}>
                     {changesRemaining} change{changesRemaining !== 1 ? 's' : ''} left
                   </span>
                 )}
-                <span style={{background: (gameState.activePolicies?.length || 0) > 3 ? '#e53e3e' : '#4a5568', color: '#fff', padding: '4px 10px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600}}>
+                <span style={{background: (gameState.activePolicies?.length || 0) > 3 ? T.negative : T.panelBorder, color: '#fff', padding: '4px 10px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600}}>
                   {gameState.activePolicies?.length || 0} / 3
                 </span>
               </div>
             </div>
-            <p style={{color: '#a0aec0', fontSize: '0.85rem', marginBottom: '12px'}}>
+            <p style={{color: T.textSecondary, fontSize: '0.85rem', marginBottom: '12px'}}>
               Toggle policies to improve your commune. More than 3 active policies will reduce Fun.
             </p>
             {changeLimitReached && (
-              <p style={{color: '#e53e3e', fontSize: '0.8rem', marginBottom: '8px'}}>Policy change limit reached for this week.</p>
+              <p style={{color: T.negative, fontSize: '0.8rem', marginBottom: '8px'}}>Policy change limit reached for this week.</p>
             )}
             <div className="policy-list">
               {(gameState.policyDefinitions || []).filter(policy => !policy.techRequired || gameState.researchedTechs?.includes(policy.techRequired)).length === 0 && (
-                <p style={{color: '#a0aec0', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0'}}>Research Technologies to unlock Policies for the Fort.</p>
+                <p style={{color: T.textSecondary, fontSize: '0.85rem', textAlign: 'center', padding: '20px 0'}}>Research Technologies to unlock Policies for the Fort.</p>
               )}
               {(gameState.policyDefinitions || []).filter(policy => !policy.techRequired || gameState.researchedTechs?.includes(policy.techRequired)).map(policy => {
                 const isActive = (gameState.activePolicies || []).includes(policy.id);
@@ -3148,21 +3120,21 @@ function App() {
         <div className="modal-overlay" onClick={() => setPolicyConfirm(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '360px'}}>
             <h2>Confirm Policy Change</h2>
-            <p style={{color: '#e2e8f0', fontSize: '0.9rem', margin: '12px 0'}}>
-              {policyConfirm.isActive ? 'Deactivate' : 'Activate'} <span style={{color: '#48bb78', fontWeight: 600}}>{policyConfirm.name}</span>?
+            <p style={{color: T.textPrimary, fontSize: '0.9rem', margin: '12px 0'}}>
+              {policyConfirm.isActive ? 'Deactivate' : 'Activate'} <span style={{color: T.positive, fontWeight: 600}}>{policyConfirm.name}</span>?
             </p>
-            <div style={{background: '#1a202c', borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
+            <div style={{background: T.bg, borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Policy</span>
-                <span style={{color: '#e2e8f0'}}>{policyConfirm.name}</span>
+                <span style={{color: T.textSecondary}}>Policy</span>
+                <span style={{color: T.textPrimary}}>{policyConfirm.name}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Affects</span>
-                <span style={{color: '#e2e8f0', textTransform: 'capitalize'}}>{policyConfirm.primitive}</span>
+                <span style={{color: T.textSecondary}}>Affects</span>
+                <span style={{color: T.textPrimary, textTransform: 'capitalize'}}>{policyConfirm.primitive}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#a0aec0'}}>Action</span>
-                <span style={{color: policyConfirm.isActive ? '#e53e3e' : '#48bb78'}}>{policyConfirm.isActive ? 'Deactivate' : 'Activate'}</span>
+                <span style={{color: T.textSecondary}}>Action</span>
+                <span style={{color: policyConfirm.isActive ? T.negative : T.positive}}>{policyConfirm.isActive ? 'Deactivate' : 'Activate'}</span>
               </div>
             </div>
             <div style={{display: 'flex', gap: '8px'}}>
@@ -3181,16 +3153,16 @@ function App() {
         <div className="modal-overlay" onClick={() => setPolicyComplete(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '360px', textAlign: 'center'}}>
             <div style={{fontSize: '2rem', marginBottom: '8px'}}>{policyComplete.action === 'activated' ? '\u2705' : '\u274C'}</div>
-            <h2 style={{color: policyComplete.action === 'activated' ? '#48bb78' : '#e53e3e'}}>
+            <h2 style={{color: policyComplete.action === 'activated' ? T.positive : T.negative}}>
               Policy {policyComplete.action === 'activated' ? 'Activated' : 'Deactivated'}
             </h2>
-            <p style={{color: '#e2e8f0', fontSize: '0.9rem', margin: '12px 0'}}>
+            <p style={{color: T.textPrimary, fontSize: '0.9rem', margin: '12px 0'}}>
               <span style={{fontWeight: 600}}>{policyComplete.name}</span> has been {policyComplete.action}.
             </p>
-            <div style={{background: '#1a202c', borderRadius: '8px', padding: '12px', marginBottom: '16px', textAlign: 'left'}}>
+            <div style={{background: T.bg, borderRadius: '8px', padding: '12px', marginBottom: '16px', textAlign: 'left'}}>
               <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#a0aec0'}}>Affects</span>
-                <span style={{color: '#e2e8f0', textTransform: 'capitalize'}}>{policyComplete.primitive}</span>
+                <span style={{color: T.textSecondary}}>Affects</span>
+                <span style={{color: T.textPrimary, textTransform: 'capitalize'}}>{policyComplete.primitive}</span>
               </div>
             </div>
             <button className="action-button" onClick={() => setPolicyComplete(null)}>
@@ -3207,24 +3179,24 @@ function App() {
               <h2 style={{margin: 0}}>Technology Research</h2>
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowTechModal(false); setShowTechTreeModal(true); }}
-                style={{display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#0a1929', border: '1px solid #1a3a5c', borderRadius: '6px', color: '#cbd5e0', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.15s ease'}}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#e94560'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a3a5c'; e.currentTarget.style.color = '#cbd5e0'; }}
+                style={{display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: T.bg, border: `1px solid ${T.panelBorder}`, borderRadius: '6px', color: T.textSecondary, cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.15s ease'}}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.panelBorder; e.currentTarget.style.color = T.textSecondary; }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="22" x2="12" y2="8"/><polyline points="8 12 12 8 16 12"/><path d="M12 8a4 4 0 0 0-4-4H4"/><path d="M12 8a4 4 0 0 1 4-4h4"/><line x1="4" y1="2" x2="4" y2="4"/><line x1="20" y1="2" x2="20" y2="4"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="22" x2="12" y2="8"/><polyline points="8 12 12 8 16 12"/><path d="M12 8a4 4 0 0 0-4-4H4"/><path d="M12 8a4 4 0 0 1 4-4h4"/><line x1="4" y1="2" x2="4" y2="4"/><line x1="20" y1="2" x2="20" y2="4"/></svg>
                 Tech Tree
               </button>
             </div>
             {gameState.researchingTech && (() => {
               const rTech = (gameState.techTree || []).find(t => t.id === gameState.researchingTech);
               const rCfg = gameState.techConfig?.[gameState.researchingTech] || {};
-              const rTreeColor = rTech?.tree === 'livingStandards' ? '#4fd1c5' : rTech?.tree === 'productivity' ? '#4299e1' : '#b794f4';
+              const rTreeColor = rTech?.tree === 'livingStandards' ? T.ls : rTech?.tree === 'productivity' ? T.pr : T.pt;
               return (
-                <div style={{background: '#2d374880', borderRadius: '8px', padding: '12px', marginBottom: '12px', borderLeft: `4px solid ${rTreeColor}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                <div style={{background: T.panelBg + '80', borderRadius: '8px', padding: '12px', marginBottom: '12px', borderLeft: `4px solid ${rTreeColor}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                     <div style={{fontSize: '1.2rem', animation: 'spin 2s linear infinite'}}>&#9881;</div>
                     <div>
-                      <div style={{color: '#e2e8f0', fontWeight: 600}}>{rTech?.name}</div>
+                      <div style={{color: T.textPrimary, fontWeight: 600}}>{rTech?.name}</div>
                       <div style={{color: rTreeColor, fontSize: '0.75rem'}}>Researching... completes next week</div>
                     </div>
                   </div>
@@ -3233,7 +3205,7 @@ function App() {
               );
             })()}
             {['livingStandards', 'productivity', 'fun'].map(treeName => {
-              const treeColor = treeName === 'livingStandards' ? '#4fd1c5' : treeName === 'productivity' ? '#4299e1' : '#b794f4';
+              const treeColor = treeName === 'livingStandards' ? T.ls : treeName === 'productivity' ? T.pr : T.pt;
               const treeTechs = (gameState.techTree || []).filter(t => t.tree === treeName);
               const availableTechs = treeTechs.filter(t => {
                 if (gameState.researchedTechs?.includes(t.id)) return false;
@@ -3262,13 +3234,13 @@ function App() {
                       if (isThisResearching) return null;
                       
                       return (
-                        <div key={tech.id} style={{background: '#2d3748', borderRadius: '8px', padding: '10px 12px', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: `4px solid ${treeColor}`, opacity: isResearching ? 0.4 : 1, pointerEvents: isResearching ? 'none' : 'auto'}}>
+                        <div key={tech.id} style={{background: T.panelBg, borderRadius: '8px', padding: '10px 12px', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: `4px solid ${treeColor}`, opacity: isResearching ? 0.4 : 1, pointerEvents: isResearching ? 'none' : 'auto'}}>
                           <div style={{flex: 1}}>
                             <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                              <span style={{fontWeight: 600, color: '#e2e8f0'}}>{tech.name}</span>
+                              <span style={{fontWeight: 600, color: T.textPrimary}}>{tech.name}</span>
                               <span style={{fontSize: '0.65rem', background: treeColor + '33', color: treeColor, padding: '1px 6px', borderRadius: '4px'}}>{typeLabel}</span>
                             </div>
-                            <div style={{color: '#a0aec0', fontSize: '0.75rem', marginTop: '2px'}}>{effectText}</div>
+                            <div style={{color: T.textSecondary, fontSize: '0.75rem', marginTop: '2px'}}>{effectText}</div>
                           </div>
                           <button
                             className="action-button"
@@ -3298,8 +3270,8 @@ function App() {
               <button className="modal-close-x" onClick={() => { setShowTechTreeModal(false); setShowTechModal(true); }}>×</button>
             </div>
             {['livingStandards', 'productivity', 'fun'].map(treeName => {
-              const treeLabel = treeName === 'livingStandards' ? 'Quality of Life' : treeName === 'productivity' ? 'Productivity' : 'Fun';
-              const treeColor = treeName === 'livingStandards' ? '#4fd1c5' : treeName === 'productivity' ? '#4299e1' : '#b794f4';
+              const treeLabel = TREE_LABELS[treeName] || treeName;
+              const treeColor = treeName === 'livingStandards' ? T.ls : treeName === 'productivity' ? T.pr : T.pt;
               const treeTechs = (gameState.techTree || []).filter(t => t.tree === treeName);
               const l1 = treeTechs.filter(t => t.level === 1);
               const l2 = treeTechs.filter(t => t.level === 2);
@@ -3322,9 +3294,9 @@ function App() {
                 
                 return (
                   <div key={tech.id} style={{
-                    background: isBeingResearched ? '#2d374880' : researched ? treeColor + '22' : '#1a202c',
-                    border: `2px solid ${isBeingResearched ? '#ecc94b' : researched ? treeColor : discovered ? '#4a5568' : '#4a556844'}`,
-                    borderLeft: `4px solid ${isBeingResearched ? '#ecc94b' : treeColor}${redacted ? '44' : ''}`,
+                    background: isBeingResearched ? T.panelBg + '80' : researched ? treeColor + '22' : T.bg,
+                    border: `2px solid ${isBeingResearched ? T.accentBright : researched ? treeColor : discovered ? T.panelBorder : T.panelBorder + '44'}`,
+                    borderLeft: `4px solid ${isBeingResearched ? T.accentBright : treeColor}${redacted ? '44' : ''}`,
                     borderRadius: '8px',
                     padding: '8px 12px',
                     minWidth: '140px',
@@ -3333,19 +3305,19 @@ function App() {
                     overflow: 'hidden'
                   }}>
                     <div style={{filter: redacted ? 'blur(5px)' : 'none', userSelect: redacted ? 'none' : 'auto'}}>
-                      <div style={{fontWeight: 600, fontSize: '0.8rem', color: isBeingResearched ? '#ecc94b' : researched ? treeColor : '#e2e8f0'}}>{tech.name}</div>
-                      <div style={{fontSize: '0.65rem', color: '#a0aec0', textTransform: 'capitalize'}}>{tech.type.replace('_', ' ')}</div>
+                      <div style={{fontWeight: 600, fontSize: '0.8rem', color: isBeingResearched ? T.accentBright : researched ? treeColor : T.textPrimary}}>{tech.name}</div>
+                      <div style={{fontSize: '0.65rem', color: T.textSecondary, textTransform: 'capitalize'}}>{tech.type.replace('_', ' ')}</div>
                     </div>
                     {isBeingResearched && (
                       <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px'}}>
                         <span style={{fontSize: '0.65rem', display: 'inline-block', animation: 'spin 2s linear infinite'}}>&#9881;</span>
-                        <span style={{fontSize: '0.6rem', color: '#ecc94b'}}>Researching...</span>
+                        <span style={{fontSize: '0.6rem', color: T.accentBright}}>Researching...</span>
                       </div>
                     )}
                     {researched && <div style={{fontSize: '0.6rem', color: treeColor, marginTop: '2px'}}>Researched</div>}
-                    {redacted && <div style={{fontSize: '0.6rem', color: '#718096', marginTop: '2px'}}>???</div>}
-                    {!researched && !isBeingResearched && !redacted && unavailable && <div style={{fontSize: '0.6rem', color: '#e53e3e', marginTop: '2px'}}>Coming Soon</div>}
-                    {!researched && !isBeingResearched && !redacted && !unavailable && discovered && <div style={{fontSize: '0.6rem', color: '#a0aec0', marginTop: '2px'}}>£{cfg.cost || 500}</div>}
+                    {redacted && <div style={{fontSize: '0.6rem', color: T.textMuted, marginTop: '2px'}}>???</div>}
+                    {!researched && !isBeingResearched && !redacted && unavailable && <div style={{fontSize: '0.6rem', color: T.negative, marginTop: '2px'}}>Coming Soon</div>}
+                    {!researched && !isBeingResearched && !redacted && !unavailable && discovered && <div style={{fontSize: '0.6rem', color: T.textSecondary, marginTop: '2px'}}>£{cfg.cost || 500}</div>}
                   </div>
                 );
               };
@@ -3362,11 +3334,11 @@ function App() {
                     <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1}}>
                       {root && renderTechNode(root)}
                     </div>
-                    <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#4a5568', fontSize: '1rem'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', color: T.panelBorder, fontSize: '1rem'}}>
                       {children.length === 2 ? (
                         <svg width="24" height="80" viewBox="0 0 24 80" style={{flexShrink: 0}}>
-                          <path d="M 0 40 L 12 40 L 12 15 L 24 15" fill="none" stroke="#4a5568" strokeWidth="2"/>
-                          <path d="M 12 40 L 12 65 L 24 65" fill="none" stroke="#4a5568" strokeWidth="2"/>
+                          <path d="M 0 40 L 12 40 L 12 15 L 24 15" fill="none" stroke={T.panelBorder} strokeWidth="2"/>
+                          <path d="M 12 40 L 12 65 L 24 65" fill="none" stroke={T.panelBorder} strokeWidth="2"/>
                         </svg>
                       ) : <span>→</span>}
                     </div>
@@ -3381,11 +3353,11 @@ function App() {
                           <svg width="16" height={branch.children.length > 1 ? 70 : 30} viewBox={`0 0 16 ${branch.children.length > 1 ? 70 : 30}`} style={{flexShrink: 0}}>
                             {branch.children.length > 1 ? (
                               <>
-                                <path d="M 0 35 L 8 35 L 8 12 L 16 12" fill="none" stroke="#4a5568" strokeWidth="2"/>
-                                <path d="M 8 35 L 8 58 L 16 58" fill="none" stroke="#4a5568" strokeWidth="2"/>
+                                <path d="M 0 35 L 8 35 L 8 12 L 16 12" fill="none" stroke={T.panelBorder} strokeWidth="2"/>
+                                <path d="M 8 35 L 8 58 L 16 58" fill="none" stroke={T.panelBorder} strokeWidth="2"/>
                               </>
                             ) : (
-                              <path d="M 0 15 L 16 15" fill="none" stroke="#4a5568" strokeWidth="2"/>
+                              <path d="M 0 15 L 16 15" fill="none" stroke={T.panelBorder} strokeWidth="2"/>
                             )}
                           </svg>
                           <div style={{display: 'flex', flexDirection: 'column', gap: '4px', flex: 1}}>
@@ -3406,29 +3378,29 @@ function App() {
         <div className="modal-overlay" onClick={() => setTechConfirm(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '380px'}}>
             <h2>Confirm Research</h2>
-            <p style={{color: '#e2e8f0', fontSize: '0.9rem', margin: '12px 0'}}>
+            <p style={{color: T.textPrimary, fontSize: '0.9rem', margin: '12px 0'}}>
               Research <span style={{color: techConfirm.treeColor, fontWeight: 600}}>{techConfirm.name}</span>?
             </p>
-            <div style={{background: '#1a202c', borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
+            <div style={{background: T.bg, borderRadius: '8px', padding: '12px', marginBottom: '16px'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Type</span>
+                <span style={{color: T.textSecondary}}>Type</span>
                 <span style={{color: techConfirm.treeColor}}>{techConfirm.typeLabel}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Effect</span>
-                <span style={{color: '#e2e8f0', textAlign: 'right', maxWidth: '200px', fontSize: '0.85rem'}}>{techConfirm.effectText}</span>
+                <span style={{color: T.textSecondary}}>Effect</span>
+                <span style={{color: T.textPrimary, textAlign: 'right', maxWidth: '200px', fontSize: '0.85rem'}}>{techConfirm.effectText}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Cost</span>
-                <span style={{color: '#e53e3e'}}>-£{techConfirm.cost?.toLocaleString()}</span>
+                <span style={{color: T.textSecondary}}>Cost</span>
+                <span style={{color: T.negative}}>-£{techConfirm.cost?.toLocaleString()}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Treasury after</span>
-                <span style={{color: '#e2e8f0'}}>£{(gameState.treasury - (techConfirm.cost || 0)).toLocaleString()}</span>
+                <span style={{color: T.textSecondary}}>Treasury after</span>
+                <span style={{color: T.textPrimary}}>£{(gameState.treasury - (techConfirm.cost || 0)).toLocaleString()}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#a0aec0'}}>Completes</span>
-                <span style={{color: '#ecc94b'}}>Next week</span>
+                <span style={{color: T.textSecondary}}>Completes</span>
+                <span style={{color: T.accentBright}}>Next week</span>
               </div>
             </div>
             <div style={{display: 'flex', gap: '8px'}}>
@@ -3447,18 +3419,18 @@ function App() {
         <div className="modal-overlay" onClick={() => setTechComplete(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{maxWidth: '380px', textAlign: 'center'}}>
             <div style={{fontSize: '2rem', marginBottom: '8px'}}>&#128300;</div>
-            <h2 style={{color: '#48bb78'}}>Research Complete</h2>
-            <p style={{color: '#e2e8f0', fontSize: '0.9rem', margin: '12px 0'}}>
+            <h2 style={{color: T.positive}}>Research Complete</h2>
+            <p style={{color: T.textPrimary, fontSize: '0.9rem', margin: '12px 0'}}>
               <span style={{fontWeight: 600}}>{techComplete.name}</span> has been researched.
             </p>
-            <div style={{background: '#1a202c', borderRadius: '8px', padding: '12px', marginBottom: '16px', textAlign: 'left'}}>
+            <div style={{background: T.bg, borderRadius: '8px', padding: '12px', marginBottom: '16px', textAlign: 'left'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                <span style={{color: '#a0aec0'}}>Type</span>
-                <span style={{color: '#e2e8f0', textTransform: 'capitalize'}}>{techComplete.type?.replace('_', ' ')}</span>
+                <span style={{color: T.textSecondary}}>Type</span>
+                <span style={{color: T.textPrimary, textTransform: 'capitalize'}}>{techComplete.type?.replace('_', ' ')}</span>
               </div>
               <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                <span style={{color: '#a0aec0'}}>Tree</span>
-                <span style={{color: '#e2e8f0'}}>{techComplete.tree === 'livingStandards' ? 'Quality of Life' : techComplete.tree === 'productivity' ? 'Productivity' : 'Fun'}</span>
+                <span style={{color: T.textSecondary}}>Tree</span>
+                <span style={{color: T.textPrimary}}>{TREE_LABELS[techComplete.tree] || techComplete.tree}</span>
               </div>
             </div>
             <button className="action-button" onClick={() => setTechComplete(null)}>
@@ -3476,9 +3448,9 @@ function App() {
               <>
                 {recruitedInfo?.llama ? (
                   <>
-                    <p className="recruit-intro" style={{color: '#48bb78'}}>Recruited this week</p>
+                    <p className="recruit-intro" style={{color: T.positive}}>Recruited this week</p>
                     <div className="candidate-list">
-                      <div className="candidate-card" style={{border: '1px solid #48bb78'}}>
+                      <div className="candidate-card" style={{border: `1px solid ${T.positive}`}}>
                         <div className="candidate-header">
                           <h3>{recruitedInfo.llama.name}</h3>
                           <span className="candidate-age">{recruitedInfo.llama.age} years old</span>
@@ -3494,12 +3466,12 @@ function App() {
                           <div className="stat-row"><span>Party Stamina</span><span>{recruitedInfo.llama.stats.partyStamina}</span></div>
                           <div className="stat-row"><span>Work Ethic</span><span>{recruitedInfo.llama.stats.workEthic}</span></div>
                         </div>
-                        <div style={{textAlign: 'center', color: '#48bb78', fontSize: '0.85rem', marginTop: '8px'}}>
+                        <div style={{textAlign: 'center', color: T.positive, fontSize: '0.85rem', marginTop: '8px'}}>
                           Arriving {recruitedInfo.arrivalDayName}
                         </div>
                       </div>
                       {recruitedInfo.rejected?.map(r => (
-                        <div key={r.id} className="candidate-card" style={{border: '1px solid #4a5568', opacity: 0.5, textDecoration: 'line-through', position: 'relative'}}>
+                        <div key={r.id} className="candidate-card" style={{border: `1px solid ${T.panelBorder}`, opacity: 0.5, textDecoration: 'line-through', position: 'relative'}}>
                           <div className="candidate-header">
                             <h3>{r.name}</h3>
                             <span className="candidate-age">{r.age} years old</span>
@@ -3521,11 +3493,11 @@ function App() {
                   </>
                 ) : (
                   <>
-                    <p className="recruit-intro" style={{color: '#48bb78'}}>Recruited this week</p>
+                    <p className="recruit-intro" style={{color: T.positive}}>Recruited this week</p>
                     {gameState.pendingArrivals?.length > 0 && (
-                      <div style={{background: '#2d3748', borderRadius: '8px', padding: '12px', marginBottom: '12px', borderLeft: '4px solid #48bb78'}}>
+                      <div style={{background: T.panelBg, borderRadius: '8px', padding: '12px', marginBottom: '12px', borderLeft: `4px solid ${T.positive}`}}>
                         {gameState.pendingArrivals.map(r => (
-                          <div key={r.id || r.name} style={{color: '#e2e8f0', fontSize: '0.9rem'}}>
+                          <div key={r.id || r.name} style={{color: T.textPrimary, fontSize: '0.9rem'}}>
                             {r.name} arriving {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][r.arrivalDay-1]}
                           </div>
                         ))}
@@ -3535,7 +3507,7 @@ function App() {
                 )}
               </>
             ) : gameState.residents + (gameState.pendingArrivals?.length || 0) >= gameState.capacity ? (
-              <p className="recruit-intro" style={{color: '#e53e3e'}}>No room available. Build more bedrooms to recruit.</p>
+              <p className="recruit-intro" style={{color: T.negative}}>No room available. Build more bedrooms to recruit.</p>
             ) : (
               <>
                 <p className="recruit-intro">Choose 1 of these 3 aspiring llamas, or pass this week.</p>
@@ -3759,11 +3731,11 @@ function App() {
                       : null;
                     const isUpgradeRow = b.isUpgrade;
                     return (
-                    <tr key={b.id} style={isUpgradeRow ? {background: '#2d374822'} : undefined}>
+                    <tr key={b.id} style={isUpgradeRow ? {background: T.panelBg + '22'} : undefined}>
                       <td style={isUpgradeRow ? {paddingLeft: '20px'} : undefined}>
-                        {isUpgradeRow && <span style={{color: '#718096', fontSize: '0.7rem', marginRight: '4px'}}>↳</span>}
+                        {isUpgradeRow && <span style={{color: T.textMuted, fontSize: '0.7rem', marginRight: '4px'}}>↳</span>}
                         {b.name}
-                        {isUpgradeRow && <span style={{color: '#ecc94b', fontSize: '0.65rem', marginLeft: '6px'}}>upgrade</span>}
+                        {isUpgradeRow && <span style={{color: T.accentBright, fontSize: '0.65rem', marginLeft: '6px'}}>upgrade</span>}
                       </td>
                       <td>
                         <input 
@@ -3900,7 +3872,7 @@ function App() {
                           placeholder="n/a"
                         />
                       </td>
-                      <td style={{fontSize: '0.75rem', color: techName ? '#a0aec0' : '#4a556844'}}>
+                      <td style={{fontSize: '0.75rem', color: techName ? T.textSecondary : T.panelBorder + '44'}}>
                         {techName || '—'}
                       </td>
                       <td>

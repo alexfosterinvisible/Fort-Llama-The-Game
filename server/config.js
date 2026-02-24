@@ -307,6 +307,7 @@ const DEFAULT_PRIMITIVE_CONFIG = {
   "recoveryDamping": 0.65,
   "crowding": {
     "baseMult": 43,
+    "crowdingFloor": 25,
     "shareTolCoeff": 0.25,
     "weight": 1,
     "useCustomPenalty": false,

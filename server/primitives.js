@@ -96,7 +96,8 @@ function calculatePrimitives() {
   const rLiv = effectiveN / effectiveCapLiv;
   const maxRatio = Math.max(rBed, rBath, rKitch, rLiv);
   const crowdBaseMult = state.primitiveConfig.crowding?.baseMult ?? 50;
-  const crowding = Math.min(100, maxRatio * crowdBaseMult * overcrowdingPenalty(maxRatio, 'crowding'));
+  const crowdingFloor = state.primitiveConfig.crowding?.crowdingFloor ?? 0;
+  const crowding = Math.min(100, Math.max(crowdingFloor, maxRatio * crowdBaseMult * overcrowdingPenalty(maxRatio, 'crowding')));
 
   const cfg = state.primitiveConfig.noise;
   const socialNoise = N * cfg.baseSocial * (1 + cfg.socioMult * (sociability - STAT_NEUTRAL)) * (1 - cfg.considMult * (consideration - STAT_NEUTRAL));

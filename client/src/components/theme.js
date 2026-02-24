@@ -26,6 +26,7 @@ export const T = {
 };
 
 export const FONT = "'Press Start 2P', monospace";
+export const FONT_BODY = "'Share Tech Mono', monospace";
 
 export const FS = {
   brand: '14px',
@@ -79,17 +80,18 @@ export function evtStyle(type) {
   }
 }
 
-// Tech tree accent colours
+// Tech tree accent colours — match health metric pillar they feed into
+// livingStandards tree → LS metric, productivity tree → PR metric, fun tree → PT metric
 export const TREE_COLORS = {
-  livingStandards: '#b07cc8',
-  productivity:    '#7eaac4',
-  fun:             '#E8B84A',
+  livingStandards: T.ls,
+  productivity:    T.pr,
+  fun:             T.pt,
 };
 
 export const TREE_LABELS = {
-  livingStandards: 'Quality of Life',
+  livingStandards: 'Living Standards',
   productivity:    'Productivity',
-  fun:             'Fun',
+  fun:             'Leisure',
 };
 
 export const TYPE_LABELS = {

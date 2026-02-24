@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS } from './theme';
+import { T, FONT, FONT_BODY, FS } from './theme';
 import { ModalOverlay, ModalHeader, ModalBody, ModalChip } from './ModalShell';
 import { StatBar } from './StatBar';
 
@@ -88,7 +88,7 @@ export function RecruitModal({
                           <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary }}>{c.name}</span>
                           <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textMuted }}>{c.age} yrs</span>
                         </div>
-                        <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textSecondary, lineHeight: '1.3' }}>{c.bio}</p>
+                        <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, lineHeight: '1.3' }}>{c.bio}</p>
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
@@ -110,7 +110,7 @@ export function RecruitModal({
                 <p style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, marginBottom: '4px' }}>
                   Confirm recruit
                 </p>
-                <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textSecondary, marginBottom: '8px', lineHeight: '1.4' }}>
+                <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, marginBottom: '8px', lineHeight: '1.4' }}>
                   Invite <span style={{ color: T.textPrimary }}>{selectedCandidate.name}</span> to join the commune.
                   This uses your recruit action for the week — they'll arrive next week.
                 </p>

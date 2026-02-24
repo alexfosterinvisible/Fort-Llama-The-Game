@@ -14,10 +14,9 @@ function getTierFromPop(pop) {
 function calculateMetricScore(rawValue, metricConfig, pop) {
   const pop0 = Math.max(1, state.healthConfig.pop0 || 2);
   const globalScaling = state.healthConfig.globalScaling || { ref0: 0.5, alpha: 0.15, p: 2 };
-  const useCustom = metricConfig.useCustomScaling === true;
-  const ref0 = Math.max(0.01, useCustom ? (metricConfig.ref0 || 0.5) : (globalScaling.ref0 || 0.5));
-  const alpha = useCustom ? (metricConfig.alpha || 0.15) : (globalScaling.alpha || 0.15);
-  const p = Math.max(0.1, useCustom ? (metricConfig.p || 2) : (globalScaling.p || 2));
+  const ref0 = Math.max(0.01, metricConfig.ref0 || globalScaling.ref0 || 0.5);
+  const alpha = metricConfig.alpha || globalScaling.alpha || 0.15;
+  const p = Math.max(0.1, metricConfig.p || globalScaling.p || 2);
   const tierMult = metricConfig.tierMult || [1.0, 1.1, 1.2, 1.35, 1.5, 1.7];
   const brackets = state.healthConfig.tierBrackets || [6, 12, 20, 50, 100];
 

@@ -337,7 +337,7 @@ function processWeekEnd() {
   checkMilestones();
 
   // Noticeboard: health metric warnings and recoveries
-  const healthNames = { livingStandards: 'Living Standards', productivity: 'Productivity', partytime: 'Partytime' };
+  const healthNames = { livingStandards: 'Living Standards', productivity: 'Productivity', partytime: 'Leisure' };
   for (const [key, label] of Object.entries(healthNames)) {
     const val = Math.round((gs.healthMetrics[key] || 0) * 100);
     const prevVal = prevSnapshot ? prevSnapshot.health[key] : 100;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS, TREE_COLORS, TREE_LABELS, TYPE_LABELS } from './theme';
+import { T, FONT, FONT_BODY, FS, TREE_COLORS, TREE_LABELS, TYPE_LABELS } from './theme';
 import { ModalOverlay, ModalHeader, ModalBody, ModalChip } from './ModalShell';
 import { TechIcon } from './PixelIcon';
 
@@ -109,7 +109,7 @@ export function ResearchModal({
                               </div>
                               <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary }}>£{tech.cost}</span>
                             </div>
-                            <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textMuted, lineHeight: '1.3' }}>{tech.desc}</p>
+                            <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textMuted, lineHeight: '1.3' }}>{tech.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -130,7 +130,7 @@ export function ResearchModal({
             <p style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, marginBottom: '8px' }}>
               Confirm research
             </p>
-            <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textSecondary, marginBottom: '12px', lineHeight: '1.5' }}>
+            <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, marginBottom: '12px', lineHeight: '1.5' }}>
               Research <span style={{ color: T.textPrimary }}>{selectedTech.name}</span> for <span style={{ color: T.textPrimary }}>£{selectedTech.cost}</span>.
               This takes 1 week to complete and uses your research slot.
             </p>

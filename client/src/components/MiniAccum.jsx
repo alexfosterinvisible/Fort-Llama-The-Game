@@ -22,7 +22,7 @@ export function MiniAccum({ value, label, tierLabel, icon, max = 100 }) {
           <PixelIcon type={icon} size={16} />
         </div>
       </div>
-      <div style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textSecondary, marginTop: '4px' }}>{label}</div>
+      <div style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textPrimary, marginTop: '4px' }}>{label}</div>
       {hov && (
         <div style={{
           position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)',

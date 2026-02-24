@@ -9,7 +9,7 @@ export function ResidentChip({ resident }) {
     <span
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        fontSize: FS.label, padding: '3px 6px',
+        fontFamily: FONT, fontSize: FS.body, padding: '5px 10px',
         border: `1px solid ${hov ? T.accent : T.panelBorderLight}`,
         background: hov ? 'rgba(212,160,53,0.1)' : 'rgba(154,150,144,0.04)',
         color: T.textPrimary, cursor: 'default',
