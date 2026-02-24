@@ -9,10 +9,12 @@ import { RecruitModal } from './components/RecruitModal';
 import { BuildModal } from './components/BuildModal';
 import { PoliciesModal } from './components/PoliciesModal';
 import { ResearchModal } from './components/ResearchModal';
+import FortLlamaLanding from './components/FortLlamaLanding';
 
 const API_BASE = '';
 
-function App() {
+function App({ mode = 'player' }) {
+  const [screen, setScreen] = useState(mode === 'player' ? 'landing' : 'game');
   const [view, setView] = useState('dashboard');
   const [gameState, setGameState] = useState(null);
   const [config, setConfig] = useState(null);
@@ -937,6 +939,9 @@ function App() {
   const projectedBudget = gameState.projectedBudget ?? Object.values(budgetInputs).reduce((s, v) => s + v, 0);
   const weeklyDelta = gameState.weeklyDelta ?? (projectedIncome - projectedGroundRent - projectedUtilities - projectedBudget);
 
+  if (screen === 'landing') {
+    return <FortLlamaLanding onStartGame={() => setScreen('game')} />;
+  }
 
   return (
     <div className="app" style={{ background: T.pageBg, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -981,6 +986,7 @@ function App() {
         </div>
       </div>
       <TopBar
+        mode={mode}
         view={view}
         vibes={dashboardProps?.vibes}
         reputation={dashboardProps?.reputation}
@@ -1707,7 +1713,7 @@ function App() {
         </div>
       )}
 
-      {view === 'devtools' && editConfig && (
+      {mode === 'dev' && view === 'devtools' && editConfig && (
         <div className="dev-tools" style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
           <div className="dev-tools-header">
             <h2>Developer Tools</h2>

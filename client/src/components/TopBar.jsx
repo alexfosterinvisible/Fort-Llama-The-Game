@@ -2,7 +2,9 @@ import { T, FONT, FS } from './theme';
 import logoSvg from '../assets/fort-llama-icon.svg';
 
 // Fixed top bar: brand, dashboard/dev-tools tabs, vibes + score status strip
-export function TopBar({ view, vibes, reputation, level, score, onSwitchView }) {
+export function TopBar({ mode, view, vibes, reputation, level, score, onSwitchView }) {
+  const tabs = mode === 'dev' ? ['dashboard', 'devtools'] : ['dashboard'];
+
   return (
     <div style={{
       display: 'flex', alignItems: 'center', flexWrap: 'wrap',
@@ -15,7 +17,7 @@ export function TopBar({ view, vibes, reputation, level, score, onSwitchView }) 
         <img src={logoSvg} alt="Fort Llama" style={{ width: '36px', height: '36px', imageRendering: 'pixelated' }} />
         <span style={{ fontSize: FS.brand, color: T.accentBright, letterSpacing: '2px', fontFamily: FONT }}>Fort Llama</span>
         <div style={{ display: 'flex', gap: '4px' }}>
-          {['dashboard', 'devtools'].map(tab => {
+          {tabs.map(tab => {
             const active = view === tab;
             const label = tab === 'dashboard' ? 'Dashboard' : 'Dev Tools';
             return (
