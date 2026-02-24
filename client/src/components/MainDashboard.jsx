@@ -183,7 +183,7 @@ export function MainDashboard({
             {/* Noticeboard (placeholder — spec incoming) */}
             <Panel style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <PanelTitle>Noticeboard</PanelTitle>
-              <div className="fl-scroll" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+              <div className="fl-scroll" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', maxHeight: '280px' }}>
                 {events && events.length > 0 ? events.map((evt, i) => {
                   const es = evtStyle(evt.type);
                   return (

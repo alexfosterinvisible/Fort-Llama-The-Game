@@ -6,7 +6,7 @@ import { PixelIcon } from './PixelIcon';
 export function MiniAccum({ value, label, tierLabel, icon, max = 100 }) {
   const [hov, setHov] = useState(false);
   const pct = Math.min(value, max) / max * 100;
-  const fillColor = pct < 40 ? '#5ab87a' : pct < 70 ? '#e8b84a' : '#d45a5a';
+  const fillColor = pct < 25 ? '#5ab87a' : pct < 50 ? '#e8b84a' : '#d45a5a';
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', cursor: 'default' }}>
