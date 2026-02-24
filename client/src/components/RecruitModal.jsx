@@ -100,52 +100,48 @@ export function RecruitModal({
                 );
               })}
             </div>
-
-            {/* Confirmation popup */}
-            {showConfirm && selectedCandidate && (
-              <div style={{
-                marginTop: '10px', padding: '10px 14px',
-                background: T.bg, border: `2px solid ${T.negative}`,
-              }}>
-                <p style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, marginBottom: '4px' }}>
-                  Confirm recruit
-                </p>
-                <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, marginBottom: '8px', lineHeight: '1.4' }}>
-                  Invite <span style={{ color: T.textPrimary }}>{selectedCandidate.name}</span> to join the commune.
-                  This uses your recruit action for the week — they'll arrive next week.
-                </p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div onClick={handleConfirm} style={{
-                    flex: 2, padding: '5px', textAlign: 'center', cursor: 'pointer',
-                    background: T.positive, border: `2px solid ${T.positive}`,
-                    fontFamily: FONT, fontSize: FS.label, color: T.bg,
-                  }}>Confirm</div>
-                  <div onClick={() => setShowConfirm(false)} style={{
-                    flex: 1, padding: '5px', textAlign: 'center', cursor: 'pointer',
-                    background: T.negative, border: `2px solid ${T.negative}`,
-                    fontFamily: FONT, fontSize: FS.label, color: T.bg,
-                  }}>Cancel</div>
-                </div>
-              </div>
-            )}
-
-            {/* Invite button */}
-            {!showConfirm && (
-              <div style={{ marginTop: '10px' }}>
-                <div onClick={() => selectedId && setShowConfirm(true)} style={{
-                  padding: '7px', textAlign: 'center',
-                  cursor: selectedId ? 'pointer' : 'default',
-                  background: selectedId ? T.positive : T.buttonBg,
-                  border: `2px solid ${selectedId ? T.positive : T.panelBorder}`,
-                  fontFamily: FONT, fontSize: FS.label,
-                  color: selectedId ? T.bg : T.textMuted,
-                  opacity: selectedId ? 1 : 0.5,
-                }}>Invite {selectedCandidate ? selectedCandidate.name : '...'}</div>
-              </div>
-            )}
           </>
         )}
       </ModalBody>
+
+      {/* Pinned bottom: confirmation + invite button (outside scroll area) */}
+      {!noRoom && !already && (
+        <div style={{ padding: '10px 14px', borderTop: `2px solid ${T.panelBorder}`, flexShrink: 0 }}>
+          {showConfirm && selectedCandidate ? (
+            <div>
+              <p style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, marginBottom: '4px' }}>
+                Confirm recruit
+              </p>
+              <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, marginBottom: '8px', lineHeight: '1.4' }}>
+                Invite <span style={{ color: T.textPrimary }}>{selectedCandidate.name}</span> to join the commune.
+                This uses your recruit action for the week — they'll arrive next week.
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div onClick={handleConfirm} style={{
+                  flex: 2, padding: '5px', textAlign: 'center', cursor: 'pointer',
+                  background: T.positive, border: `2px solid ${T.positive}`,
+                  fontFamily: FONT, fontSize: FS.label, color: T.bg,
+                }}>Confirm</div>
+                <div onClick={() => setShowConfirm(false)} style={{
+                  flex: 1, padding: '5px', textAlign: 'center', cursor: 'pointer',
+                  background: T.negative, border: `2px solid ${T.negative}`,
+                  fontFamily: FONT, fontSize: FS.label, color: T.bg,
+                }}>Cancel</div>
+              </div>
+            </div>
+          ) : (
+            <div onClick={() => selectedId && setShowConfirm(true)} style={{
+              padding: '7px', textAlign: 'center',
+              cursor: selectedId ? 'pointer' : 'default',
+              background: selectedId ? T.positive : T.buttonBg,
+              border: `2px solid ${selectedId ? T.positive : T.panelBorder}`,
+              fontFamily: FONT, fontSize: FS.label,
+              color: selectedId ? T.bg : T.textMuted,
+              opacity: selectedId ? 1 : 0.5,
+            }}>Invite {selectedCandidate ? selectedCandidate.name : '...'}</div>
+          )}
+        </div>
+      )}
     </ModalOverlay>
   );
 }

@@ -454,8 +454,8 @@ const DEFAULT_HEALTH_CONFIG = {
 };
 
 const DEFAULT_VIBES_CONFIG = {
-  "balancedThreshold": 0.18,
-  "strongImbalanceThreshold": 0.3,
+  "balancedRatio": 0.6,
+  "strongImbalanceRatio": 0.4,
   "tierThresholds": [
     {
       "name": "Shambles",

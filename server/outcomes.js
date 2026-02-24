@@ -86,8 +86,9 @@ function calculateVibes() {
   const spread = sorted[2] - sorted[0];
   const median = sorted[1];
 
-  const isBalanced = spread <= cfg.balancedThreshold;
-  const isStrongImbalance = spread > cfg.strongImbalanceThreshold;
+  const ratio = sorted[2] > 0 ? sorted[0] / sorted[2] : 1;
+  const isBalanced = ratio >= cfg.balancedRatio;
+  const isStrongImbalance = ratio < cfg.strongImbalanceRatio;
 
   let baseTierIndex = 0;
   for (let i = 0; i < cfg.tierThresholds.length; i++) {

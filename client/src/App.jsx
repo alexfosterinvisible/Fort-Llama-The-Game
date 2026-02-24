@@ -1095,7 +1095,7 @@ function App({ mode = 'player' }) {
           allPolicies={dashboardProps.allPolicies}
           policySlots={dashboardProps.policySlots}
           policyChangesLeft={dashboardProps.policyChangesLeft}
-          onTogglePolicy={(id) => { handleTogglePolicy(id); setActiveModal(null); }}
+          onApplyChanges={async (ids) => { for (const id of ids) await handleTogglePolicy(id); setActiveModal(null); }}
           onClose={() => setActiveModal(null)}
         />
       )}
@@ -1531,11 +1531,17 @@ function App({ mode = 'player' }) {
                   const techPending = !gameState.researchingTech && !gameState.hasResearchedThisWeek && hasAvailableTechs;
                   const policyLimitActive = (gameState.policiesStableWeeks || 0) >= 1 && (gameState.previousPolicies?.length || 0) >= 3;
                   const policyChangesLeft = policyLimitActive ? Math.max(0, (gameState.config?.policyChangesPerWeek ?? 1) - (gameState.policyChangesThisWeek || 0)) : 999;
-                  const hasUnlockedPolicies = (gameState.policyDefinitions || []).some(p => !p.techRequired || gameState.researchedTechs?.includes(p.techRequired));
-                  const policyNotify = hasUnlockedPolicies && policyChangesLeft > 0 && !policyLimitActive;
+                  const unlockedPolicies = (gameState.policyDefinitions || []).filter(p => !p.techRequired || gameState.researchedTechs?.includes(p.techRequired));
+                  const hasUnlockedPolicies = unlockedPolicies.length > 0;
+                  const allUnlockedActive = hasUnlockedPolicies && unlockedPolicies.every(p => (gameState.activePolicies || []).includes(p.id));
+                  const policyNotify = hasUnlockedPolicies && policyChangesLeft > 0 && !policyLimitActive && !allUnlockedActive;
+                  const policyDisabled = !hasUnlockedPolicies || (allUnlockedActive && policyChangesLeft === 0);
+                  const policyLabel = !hasUnlockedPolicies
+                    ? 'Policies (0/0)'
+                    : `Policies (${(gameState.activePolicies?.length || 0)}/${unlockedPolicies.length})`;
                   return (
                     <>
-                <button 
+                <button
                   className="action-grid-btn"
                   onClick={() => { if (!gameState.hasRecruitedThisWeek) { handleOpenRecruitment(); } else { setShowRecruitModal(true); } }}
                 >
@@ -1548,10 +1554,11 @@ function App({ mode = 'player' }) {
                   <span className="action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94L6.73 20.15a2.1 2.1 0 01-2.88-2.88l6.68-6.68A6 6 0 016.53 2.53l3.77 3.77z"/></svg></span>
                   <span className="action-label">Build</span>
                 </button>
-                <button className="action-grid-btn" onClick={() => setShowPolicyModal(true)}>
+                <button className="action-grid-btn" onClick={() => setShowPolicyModal(true)}
+                  disabled={policyDisabled} style={policyDisabled ? { opacity: 0.4, cursor: 'default' } : {}}>
                   {policyNotify && <span className="action-notify"/>}
                   <span className="action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
-                  <span className="action-label">Policies{(gameState.activePolicies?.length || 0) > 0 ? ` (${gameState.activePolicies.length})` : ''}</span>
+                  <span className="action-label">{policyLabel}</span>
                 </button>
                 <button className="action-grid-btn" onClick={() => setShowTechModal(true)}>
                   {techPending && <span className="action-notify"/>}
@@ -1928,8 +1935,22 @@ function App({ mode = 'player' }) {
                 </div>
                 <div style={{flex: 1}}>
                   <label style={{fontSize: '0.75rem', color: T.textSecondary, display: 'block', marginBottom: '4px'}}>Identity Labels (when imbalanced)</label>
-                  <div style={{fontSize: '0.65rem', color: '#6a6866', marginBottom: '6px'}}>
-                    Spread &lt; {editConfig?.vibes?.balancedThreshold || 0.18} = Balanced | {editConfig?.vibes?.balancedThreshold || 0.18}–{editConfig?.vibes?.strongImbalanceThreshold || 0.30} = Mild | &gt; {editConfig?.vibes?.strongImbalanceThreshold || 0.30} = Strong
+                  <div style={{display: 'flex', gap: '8px', marginBottom: '6px'}}>
+                    <div style={{flex: 1}}>
+                      <label style={{fontSize: '0.6rem', color: '#6a6866', display: 'block', marginBottom: '2px'}}>Balanced Ratio</label>
+                      <input className="config-table-input" type="number" step="0.05" style={{width: '100%'}}
+                        value={editConfig?.vibes?.balancedRatio ?? 0.6}
+                        onChange={(e) => setEditConfig({...editConfig, vibes: {...editConfig.vibes, balancedRatio: parseFloat(e.target.value)}})} />
+                    </div>
+                    <div style={{flex: 1}}>
+                      <label style={{fontSize: '0.6rem', color: '#6a6866', display: 'block', marginBottom: '2px'}}>Strong Imbalance</label>
+                      <input className="config-table-input" type="number" step="0.05" style={{width: '100%'}}
+                        value={editConfig?.vibes?.strongImbalanceRatio ?? 0.4}
+                        onChange={(e) => setEditConfig({...editConfig, vibes: {...editConfig.vibes, strongImbalanceRatio: parseFloat(e.target.value)}})} />
+                    </div>
+                  </div>
+                  <div style={{fontSize: '0.6rem', color: '#6a6866', marginBottom: '6px'}}>
+                    Min/Max &ge; {editConfig?.vibes?.balancedRatio || 0.6} = Balanced | {editConfig?.vibes?.strongImbalanceRatio || 0.4}–{editConfig?.vibes?.balancedRatio || 0.6} = Mild | &lt; {editConfig?.vibes?.strongImbalanceRatio || 0.4} = Strong
                   </div>
                   <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem'}}>
                     <thead>
