@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS } from './theme';
+import { T, FONT_BODY, FS } from './theme';
 
 // Treasury line with optional hover breakdown popup
 export function TreasuryRow({ label, val, color, breakdown }) {
@@ -16,8 +16,8 @@ export function TreasuryRow({ label, val, color, breakdown }) {
         cursor: 'default',
       }}
     >
-      <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textSecondary }}>{label}</span>
-      <span style={{ fontFamily: FONT, fontSize: FS.display, color }}>{val}</span>
+      <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary }}>{label}</span>
+      <span style={{ fontFamily: FONT_BODY, fontSize: '15px', color }}>{val}</span>
       {hov && breakdown && breakdown.length > 0 && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', right: 0,

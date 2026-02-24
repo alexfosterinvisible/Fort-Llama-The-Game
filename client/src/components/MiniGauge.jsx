@@ -39,7 +39,7 @@ export function MiniGauge({ value, label, tierLabel }) {
           <rect x={cx - 2} y={cy - 2} width="4" height="4" fill={T.textMuted} />
         </svg>
       </div>
-      <div style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textSecondary, marginTop: '4px' }}>{label}</div>
+      <div style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textPrimary, marginTop: '4px' }}>{label}</div>
       {hov && (
         <div style={{
           position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)',

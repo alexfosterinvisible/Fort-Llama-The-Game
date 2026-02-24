@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS, BUDGET_DISPLAY } from './theme';
+import { T, FONT, FONT_BODY, FS, BUDGET_DISPLAY } from './theme';
 import { PixelIcon } from './PixelIcon';
 import { ActionButton } from './ActionButton';
 
@@ -60,9 +60,9 @@ export function ActionPanel({
         padding: '6px 8px',
         background: T.panelBg, border: `2px solid ${T.panelBorder}`,
       }}>
-        <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textSecondary }}>Wk {week}</span>
-        <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary }}>{day}</span>
-        <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, letterSpacing: '1px' }}>{time}</span>
+        <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary }}>Wk {week}</span>
+        <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textPrimary }}>{day}</span>
+        <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textPrimary, letterSpacing: '1px' }}>{time}</span>
       </div>
 
       {/* 2×2 Action buttons */}
@@ -79,19 +79,18 @@ export function ActionPanel({
 
       {/* Rent slider */}
       <div style={{ background: T.panelBg, border: `2px solid ${T.panelBorder}`, padding: '8px 10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-          <span style={{ fontFamily: FONT, fontSize: FS.heading, color: '#fff' }}>Rent</span>
-          <span style={{ fontFamily: FONT, fontSize: FS.display, color: '#fff' }}>£{rent}</span>
-        </div>
+        <span style={{ fontFamily: FONT, fontSize: FS.heading, color: '#fff' }}>Rent</span>
         <input className="fl-rent" type="range"
           min={rentMin || 50} max={rentMax || 500} step={rentStep || 10}
           value={rent}
           onChange={e => onRentChange(Number(e.target.value))}
           onMouseUp={onRentRelease}
           onTouchEnd={onRentRelease}
+          style={{ margin: '8px 0 6px' }}
         />
-        <div style={{ marginTop: '6px' }}>
-          <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.accent }}>{rentTier}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.accent }}>{rentTier}</span>
+          <span style={{ fontFamily: FONT_BODY, fontSize: '16px', color: '#fff' }}>£{rent}</span>
         </div>
       </div>
 
@@ -114,26 +113,26 @@ export function ActionPanel({
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0',
                   borderBottom: i < budgetEntries.length - 1 ? '1px solid rgba(70,70,70,0.4)' : 'none',
                 }}>
-                  <span style={{ fontFamily: FONT, fontSize: FS.label, color: T.textSecondary, width: '52px', flexShrink: 0 }}>{display.name}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.textSecondary, width: '72px', flexShrink: 0 }}>{display.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                     {['--', '-'].map(btn => (
                       <div key={btn} onClick={() => onBudgetStep(key, btn === '--' ? -10 : -5)} style={{
-                        width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: T.buttonBg, border: `1px solid ${T.buttonBorder}`, cursor: 'pointer',
-                        fontFamily: FONT, fontSize: FS.label, color: T.textSecondary,
+                        fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary,
                       }}>{btn}</div>
                     ))}
                     <div style={{
-                      minWidth: '32px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'rgba(0,0,0,0.2)', padding: '0 3px',
+                      minWidth: '38px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(0,0,0,0.2)', padding: '0 4px',
                     }}>
-                      <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary }}>£{value}</span>
+                      <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.textPrimary }}>£{value}</span>
                     </div>
                     {['+', '++'].map(btn => (
                       <div key={btn} onClick={() => onBudgetStep(key, btn === '++' ? 10 : 5)} style={{
-                        width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: T.buttonBg, border: `1px solid ${T.buttonBorder}`, cursor: 'pointer',
-                        fontFamily: FONT, fontSize: FS.label, color: T.textSecondary,
+                        fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary,
                       }}>{btn}</div>
                     ))}
                   </div>
@@ -148,8 +147,8 @@ export function ActionPanel({
           padding: '6px 8px',
           background: T.panelBg, border: `2px solid ${T.panelBorder}`, borderTop: 'none',
         }}>
-          <span style={{ fontFamily: FONT, fontSize: FS.label, color: T.textSecondary }}>Total Budget</span>
-          <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.negative }}>
+          <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.textSecondary }}>Total Budget</span>
+          <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.negative }}>
             -£{totalBudget}/wk
           </span>
         </div>

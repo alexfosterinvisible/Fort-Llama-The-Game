@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS } from './theme';
+import { T, FONT, FONT_BODY, FS } from './theme';
 import { ModalOverlay, ModalHeader, ModalBody, ModalChip } from './ModalShell';
 import { BuildingIcon } from './PixelIcon';
 
@@ -92,7 +92,7 @@ export function BuildModal({
             <p style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, marginBottom: '4px' }}>
               Confirm build
             </p>
-            <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textSecondary, marginBottom: '8px', lineHeight: '1.4' }}>
+            <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, marginBottom: '8px', lineHeight: '1.4' }}>
               Build <span style={{ color: T.textPrimary }}>{selectedBuilding.name}</span> for <span style={{ color: T.textPrimary }}>£{selectedBuilding.cost}</span>.
               This uses your build action for the week and permanently increases ground rent and utilities.
             </p>

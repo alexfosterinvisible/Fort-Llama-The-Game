@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS, evtStyle } from './theme';
+import { T, FONT, FONT_BODY, FS, evtStyle } from './theme';
 import { Panel, PanelTitle } from './Panel';
 import { PixelIcon } from './PixelIcon';
 import { Sparkline } from './Sparkline';
@@ -53,8 +53,8 @@ export function MainDashboard({
                 display: 'flex', justifyContent: 'space-between', padding: '5px 0 0',
                 marginTop: '2px', borderTop: `1px solid ${T.panelBorderLight}`,
               }}>
-                <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textSecondary }}>Net</span>
-                <span style={{ fontFamily: FONT, fontSize: FS.display, color: (net || 0) >= 0 ? T.positive : T.negative }}>
+                <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary }}>Net</span>
+                <span style={{ fontFamily: FONT_BODY, fontSize: '15px', color: (net || 0) >= 0 ? T.positive : T.negative }}>
                   £{net || 0}
                 </span>
               </div>
@@ -67,7 +67,7 @@ export function MainDashboard({
                 {[
                   { label: 'Living Standards', val: ls, color: T.ls, data: metricHistory?.map(d => d.ls) },
                   { label: 'Productivity', val: pr, color: T.pr, data: metricHistory?.map(d => d.pr) },
-                  { label: 'Partytime', val: pt, color: T.pt, data: metricHistory?.map(d => d.pt) },
+                  { label: 'Leisure', val: pt, color: T.pt, data: metricHistory?.map(d => d.pt) },
                 ].map(m => (
                   <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{
@@ -79,7 +79,7 @@ export function MainDashboard({
                     <div style={{ width: '68px', marginRight: '8px' }}>
                       <Sparkline data={m.data} color={m.color} width={68} height={18} />
                     </div>
-                    <span style={{ fontFamily: FONT, fontSize: FS.display, color: m.color, width: '30px', textAlign: 'right' }}>{m.val}</span>
+                    <span style={{ fontFamily: FONT_BODY, fontSize: '18px', color: m.color, width: '30px', textAlign: 'right' }}>{m.val}</span>
                   </div>
                 ))}
               </div>
@@ -123,11 +123,11 @@ export function MainDashboard({
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0',
                   borderBottom: i < buildings.length - 1 ? '1px solid rgba(70,70,70,0.4)' : 'none',
                 }}>
-                  <span style={{ fontFamily: FONT, fontSize: FS.label, color: b.status === 'pending' ? T.textMuted : T.textSecondary }}>{b.name}</span>
+                  <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: b.status === 'pending' ? T.textMuted : T.textSecondary }}>{b.name}</span>
                   {b.status === 'pending' ? (
                     <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.bg, background: T.accentBright, padding: '1px 4px' }}>Pending</span>
                   ) : (
-                    <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary }}>{b.count} ({b.cap})</span>
+                    <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textPrimary }}>{b.count} ({b.cap})</span>
                   )}
                 </div>
               ))}
@@ -152,8 +152,8 @@ export function MainDashboard({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   {Object.entries(aggregateStats).map(([skill, val]) => (
                     <div key={skill} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}>
-                      <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textSecondary, textTransform: 'uppercase' }}>{skill}</span>
-                      <span style={{ fontFamily: FONT, fontSize: FS.label, color: val > 0 ? T.positive : val < 0 ? T.negative : T.textSecondary }}>
+                      <span style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, textTransform: 'uppercase' }}>{skill}</span>
+                      <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: val > 0 ? T.positive : val < 0 ? T.negative : T.textSecondary }}>
                         {val > 0 ? `+${val}%` : `${val}%`}
                       </span>
                     </div>
@@ -163,13 +163,13 @@ export function MainDashboard({
               {/* Policies */}
               <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: `1px solid ${T.panelBorder}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textSecondary, letterSpacing: '1px', textTransform: 'uppercase' }}>Policies</span>
-                  <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textPrimary }}>
+                  <span style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, letterSpacing: '1px', textTransform: 'uppercase' }}>Policies</span>
+                  <span style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textPrimary }}>
                     {policies ? policies.filter(p => p.active !== false).length : 0}/3
                   </span>
                 </div>
                 {(!policies || policies.length === 0) ? (
-                  <span style={{ fontSize: FS.micro, color: T.textMuted, fontStyle: 'italic', fontFamily: 'sans-serif' }}>None active</span>
+                  <span style={{ fontSize: '12px', color: T.textMuted, fontStyle: 'italic', fontFamily: FONT_BODY }}>None active</span>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {policies.map((p, i) => (
@@ -192,12 +192,12 @@ export function MainDashboard({
                       borderBottom: i < events.length - 1 ? '1px solid rgba(70,70,70,0.35)' : 'none',
                     }}>
                       <span style={{ color: es.color, fontFamily: FONT, fontSize: FS.body, width: '12px', textAlign: 'center', flexShrink: 0 }}>{es.icon}</span>
-                      <span style={{ fontSize: FS.body, fontFamily: 'monospace', color: '#fff', lineHeight: '1.5', flex: 1 }}>{evt.text}</span>
+                      <span style={{ fontSize: '13px', fontFamily: FONT_BODY, color: '#fff', lineHeight: '1.5', flex: 1 }}>{evt.text}</span>
                       <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textMuted, flexShrink: 0 }}>W{evt.week}</span>
                     </div>
                   );
                 }) : (
-                  <span style={{ fontSize: FS.micro, color: T.textMuted, fontStyle: 'italic', fontFamily: 'sans-serif' }}>
+                  <span style={{ fontSize: '12px', color: T.textMuted, fontStyle: 'italic', fontFamily: FONT_BODY }}>
                     No notices yet.
                   </span>
                 )}
@@ -223,7 +223,7 @@ export function MainDashboard({
                   <div style={{ width: '18px', display: 'flex', justifyContent: 'center' }}>
                     <PixelIcon type={c.icon} size={14} />
                   </div>
-                  <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textSecondary, width: '80px', flexShrink: 0, textTransform: 'uppercase' }}>{c.name}</span>
+                  <span style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textPrimary, width: '80px', flexShrink: 0, textTransform: 'uppercase' }}>{c.name}</span>
                   <SegBar value={prim.value} threshold={prim.threshold} tierLabel={prim.tier} />
                 </div>
               );

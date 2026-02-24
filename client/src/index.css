@@ -5,7 +5,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: 'Share Tech Mono', monospace;
   background: #282828;
   color: #e6e2dc;
   min-height: 100vh;
@@ -1488,24 +1488,12 @@ body {
   text-transform: uppercase;
 }
 
-.primitive-type.pressure {
-  background: rgba(196,126,126,0.2);
-  color: #c47e7e;
-}
-
-.primitive-type.instant {
-  background: rgba(126,170,196,0.2);
-  color: #7eaac4;
-}
-
-.primitive-type.stock {
-  background: rgba(224,168,88,0.2);
-  color: #b07cc8;
-}
-
+.primitive-type.pressure,
+.primitive-type.instant,
+.primitive-type.stock,
 .primitive-type.coverage {
-  background: rgba(140,196,160,0.2);
-  color: #8cc4a0;
+  background: rgba(106,104,102,0.2);
+  color: #9c9894;
 }
 
 .coverage-label {

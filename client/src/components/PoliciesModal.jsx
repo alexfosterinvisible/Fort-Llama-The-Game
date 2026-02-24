@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS } from './theme';
+import { T, FONT, FONT_BODY, FS } from './theme';
 import { ModalOverlay, ModalHeader, ModalBody, ModalChip } from './ModalShell';
 
 // Checkbox-led policy toggle with commit flow
@@ -93,7 +93,7 @@ export function PoliciesModal({
                       <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.positive }}>ON</span>
                     )}
                   </div>
-                  <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textMuted }}>{p.effect}</p>
+                  <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textMuted }}>{p.effect}</p>
                 </div>
               </div>
             );
@@ -109,7 +109,7 @@ export function PoliciesModal({
             <p style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary, marginBottom: '8px' }}>
               Confirm policy change
             </p>
-            <p style={{ fontFamily: 'monospace', fontSize: '11px', color: T.textSecondary, marginBottom: '12px', lineHeight: '1.5' }}>
+            <p style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, marginBottom: '12px', lineHeight: '1.5' }}>
               {pendingAction} <span style={{ color: T.textPrimary }}>{pendingPolicy.name}</span>.
               This uses your policy change for the week — you won't be able to make another until next week.
             </p>

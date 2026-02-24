@@ -136,13 +136,13 @@ function calculateVibes() {
     let driverMetric;
     let branchKey;
     if (isHighDriver) {
-      if (sorted[2] === pt) { driverMetric = 'Partytime'; branchKey = 'highPartytime'; }
+      if (sorted[2] === pt) { driverMetric = 'Leisure'; branchKey = 'highPartytime'; }
       else if (sorted[2] === pr) { driverMetric = 'Productivity'; branchKey = 'highProductivity'; }
       else { driverMetric = 'LivingStandards'; branchKey = 'highLivingStandards'; }
     } else {
       if (sorted[0] === ls) { driverMetric = 'LivingStandards'; branchKey = 'lowLivingStandards'; }
       else if (sorted[0] === pr) { driverMetric = 'Productivity'; branchKey = 'lowProductivity'; }
-      else { driverMetric = 'Partytime'; branchKey = 'lowPartytime'; }
+      else { driverMetric = 'Leisure'; branchKey = 'lowPartytime'; }
     }
 
     const severity = isStrongImbalance ? 'strong' : 'mild';
