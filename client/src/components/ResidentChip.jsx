@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS } from './theme';
+import { T, FONT, FONT_BODY, FS } from './theme';
 
 // Name tag with skill hover popup showing all resident stats
 export function ResidentChip({ resident }) {
@@ -9,7 +9,7 @@ export function ResidentChip({ resident }) {
     <span
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        fontFamily: FONT, fontSize: FS.body, padding: '5px 10px',
+        fontFamily: FONT_BODY, fontSize: '13px', padding: '4px 8px',
         border: `1px solid ${hov ? T.accent : T.panelBorderLight}`,
         background: hov ? 'rgba(212,160,53,0.1)' : 'rgba(154,150,144,0.04)',
         color: T.textPrimary, cursor: 'default',
@@ -24,12 +24,12 @@ export function ResidentChip({ resident }) {
           padding: '8px 10px', zIndex: 30, minWidth: '150px', whiteSpace: 'nowrap',
           boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
         }}>
-          <div style={{ fontSize: FS.body, color: T.accent, marginBottom: '4px', textAlign: 'center' }}>{resident.name}</div>
+          <div style={{ fontFamily: FONT, fontSize: FS.body, color: T.accent, marginBottom: '4px', textAlign: 'center' }}>{resident.name}</div>
           <div style={{ height: '1px', background: T.panelBorder, marginBottom: '4px' }} />
           {Object.entries(resident.skills).map(([skill, val]) => (
             <div key={skill} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '1px 0' }}>
-              <span style={{ fontSize: FS.micro, color: T.textSecondary, textTransform: 'uppercase' }}>{skill}</span>
-              <span style={{ fontSize: FS.label, color: val > 0 ? T.positive : val < 0 ? T.negative : T.textSecondary }}>
+              <span style={{ fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary, textTransform: 'uppercase' }}>{skill}</span>
+              <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: val > 0 ? T.positive : val < 0 ? T.negative : T.textSecondary }}>
                 {val > 0 ? `+${val}` : val}
               </span>
             </div>

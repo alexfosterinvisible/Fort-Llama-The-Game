@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS, tierColor } from './theme';
+import { T, FONT_BODY, FS, tierColor } from './theme';
 
 // Traffic-light gradient: red → amber → green based on segment position
 function segGradient(i, total) {
@@ -45,10 +45,10 @@ export function SegBar({ value, max = 100, threshold, tierLabel }) {
       )}
       {hovered && (
         <div style={{
-          position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)',
-          fontFamily: FONT, fontSize: FS.label, color: tierLabel ? tierColor(tierLabel) : T.textPrimary,
+          position: 'absolute', top: '-22px', left: '50%', transform: 'translateX(-50%)',
+          fontFamily: FONT_BODY, fontSize: '12px', color: tierLabel ? tierColor(tierLabel) : T.textPrimary,
           background: T.panelBg, border: `1px solid ${T.panelBorder}`,
-          padding: '2px 5px', whiteSpace: 'nowrap', zIndex: 10,
+          padding: '2px 6px', whiteSpace: 'nowrap', zIndex: 10,
         }}>{tierLabel ? `${tierLabel} (${value})` : `${value} / ${max}`}</div>
       )}
     </div>

@@ -3,7 +3,7 @@ import './components/dashboard.css';
 import { T, STAT_DISPLAY, BUDGET_DISPLAY, TREE_COLORS, TREE_LABELS } from './components/theme';
 import { TopBar } from './components/TopBar';
 import { ActionPanel } from './components/ActionPanel';
-import { MainDashboard } from './components/MainDashboard';
+import { DataPanel } from './components/DataPanel';
 import { GameOverScreen } from './components/GameOverScreen';
 import { RecruitModal } from './components/RecruitModal';
 import { BuildModal } from './components/BuildModal';
@@ -13,9 +13,23 @@ import FortLlamaLanding from './components/FortLlamaLanding';
 
 const API_BASE = '';
 
+// Responsive width hook — returns current window width, updates on resize
+function useWindowWidth() {
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  useEffect(() => {
+    const handle = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handle);
+    return () => window.removeEventListener('resize', handle);
+  }, []);
+  return width;
+}
+
 function App({ mode = 'player' }) {
+  const winWidth = useWindowWidth();
+  const layout = winWidth >= 850 ? 'wide' : winWidth >= 600 ? 'medium' : 'narrow';
   const [screen, setScreen] = useState(mode === 'player' ? 'landing' : 'game');
   const [view, setView] = useState('dashboard');
+  const [narrowTab, setNarrowTab] = useState('actions');
   const [gameState, setGameState] = useState(null);
   const [config, setConfig] = useState(null);
   const [editConfig, setEditConfig] = useState(null);
@@ -818,7 +832,7 @@ function App({ mode = 'player' }) {
       rentStep: config.rentStep || 10,
       budgets: budgetInputs,
       isPaused,
-      // MainDashboard
+      // DataPanel
       treasury: Math.round(gameState.treasury || 0),
       income: Math.round(projIncome),
       expenses: Math.round(totalExpenses),
@@ -945,7 +959,8 @@ function App({ mode = 'player' }) {
 
   return (
     <div className="app" style={{ background: T.pageBg, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      {/* Decorative pixel clouds */}
+      {/* Decorative pixel clouds — only on wide layout */}
+      {layout === 'wide' && (
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
         {/* Large puffy cloud */}
         <div style={{ position: 'absolute', top: '10%', left: '5%', animation: 'fl-drift1 90s linear infinite', animationDelay: '-10s' }}>
@@ -985,86 +1000,90 @@ function App({ mode = 'player' }) {
           </svg>
         </div>
       </div>
+      )}
       <TopBar
-        mode={mode}
-        view={view}
         vibes={dashboardProps?.vibes}
         reputation={dashboardProps?.reputation}
         level={dashboardProps?.level}
         score={dashboardProps?.score}
-        onSwitchView={(v) => {
-          if (v === 'devtools') {
-            setView('devtools');
-            setEditConfig({
-              ...config,
-              health: gameState?.healthConfig,
-              primitives: gameState?.primitiveConfig,
-              vibes: gameState?.vibesConfig,
-              budgetConfig: gameState?.budgetConfig,
-              policyConfig: gameState?.policyConfig,
-              techConfig: gameState?.techConfig
-            });
-          } else {
-            setView(v);
-          }
-        }}
+        layout={layout}
+        narrowTab={narrowTab}
+        onNarrowTab={setNarrowTab}
       />
 
       {gameState.isGameOver && view === 'dashboard' && (
         <GameOverScreen onRestart={handleReset} />
       )}
-      {gameState.isGameOver && view !== 'dashboard' && (
-        <div className="game-over">
-          <h2>GAME OVER</h2>
-          <p>The commune has gone bankrupt! Treasury: {formatCurrency(gameState.treasury)}</p>
-          <button className="btn-reset" onClick={handleReset}>Try Again</button>
-        </div>
-      )}
 
       {view === 'dashboard' && dashboardProps && (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-          <ActionPanel
-            week={dashboardProps.week}
-            day={dashboardProps.day}
-            time={dashboardProps.time}
-            hasRecruitedThisWeek={dashboardProps.hasRecruitedThisWeek}
-            buildsThisWeek={dashboardProps.buildsThisWeek}
-            buildsPerWeek={dashboardProps.buildsPerWeek}
-            policyChangesLeft={dashboardProps.policyChangesLeft}
-            researchingTech={dashboardProps.researchingTech}
-            rent={dashboardProps.rent}
-            rentTier={dashboardProps.rentTier}
-            rentMin={dashboardProps.rentMin}
-            rentMax={dashboardProps.rentMax}
-            rentStep={dashboardProps.rentStep}
-            budgets={dashboardProps.budgets}
-            isPaused={dashboardProps.isPaused}
-            onOpenModal={handleOpenModal}
-            onRentChange={(val) => setRentInput(String(val))}
-            onRentRelease={() => handleSetRent(rentInput)}
-            onBudgetStep={handleBudgetStep}
-            onStartWeek={handleDismissWeekly}
-            onRestart={() => { if (window.confirm('Are you sure you want to restart the game?')) handleReset(); }}
-          />
-          <MainDashboard
-            treasury={dashboardProps.treasury}
-            income={dashboardProps.income}
-            expenses={dashboardProps.expenses}
-            net={dashboardProps.net}
-            incomeBreakdown={dashboardProps.incomeBreakdown}
-            expenseBreakdown={dashboardProps.expenseBreakdown}
-            healthMetrics={dashboardProps.healthMetrics}
-            metricHistory={dashboardProps.metricHistory}
-            researchedCulture={dashboardProps.researchedCulture}
-            buildings={dashboardProps.buildings}
-            residents={dashboardProps.residents}
-            population={dashboardProps.population}
-            capacity={dashboardProps.capacity}
-            aggregateStats={dashboardProps.aggregateStats}
-            policies={dashboardProps.policies}
-            events={dashboardProps.events}
-            primitives={dashboardProps.primitives}
-          />
+          {/* WIDE: Actions | Sky | Vitals */}
+          {layout === 'wide' && (<>
+            <ActionPanel
+              week={dashboardProps.week} day={dashboardProps.day} time={dashboardProps.time}
+              hasRecruitedThisWeek={dashboardProps.hasRecruitedThisWeek} buildsThisWeek={dashboardProps.buildsThisWeek} buildsPerWeek={dashboardProps.buildsPerWeek}
+              policyChangesLeft={dashboardProps.policyChangesLeft} researchingTech={dashboardProps.researchingTech}
+              rent={dashboardProps.rent} rentTier={dashboardProps.rentTier} rentMin={dashboardProps.rentMin} rentMax={dashboardProps.rentMax} rentStep={dashboardProps.rentStep}
+              budgets={dashboardProps.budgets} isPaused={dashboardProps.isPaused}
+              onOpenModal={handleOpenModal} onRentChange={(val) => setRentInput(String(val))} onRentRelease={() => handleSetRent(rentInput)}
+              onBudgetStep={handleBudgetStep} onStartWeek={handleDismissWeekly}
+              onRestart={() => { if (window.confirm('Are you sure you want to restart the game?')) handleReset(); }}
+            />
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }} />
+            <DataPanel
+              treasury={dashboardProps.treasury} income={dashboardProps.income} expenses={dashboardProps.expenses} net={dashboardProps.net}
+              incomeBreakdown={dashboardProps.incomeBreakdown} expenseBreakdown={dashboardProps.expenseBreakdown}
+              healthMetrics={dashboardProps.healthMetrics} metricHistory={dashboardProps.metricHistory} researchedCulture={dashboardProps.researchedCulture}
+              buildings={dashboardProps.buildings} residents={dashboardProps.residents} population={dashboardProps.population} capacity={dashboardProps.capacity}
+              aggregateStats={dashboardProps.aggregateStats} policies={dashboardProps.policies} events={dashboardProps.events} primitives={dashboardProps.primitives}
+            />
+          </>)}
+
+          {/* MEDIUM: Actions + single-column Vitals, no sky */}
+          {layout === 'medium' && (<>
+            <ActionPanel
+              week={dashboardProps.week} day={dashboardProps.day} time={dashboardProps.time}
+              hasRecruitedThisWeek={dashboardProps.hasRecruitedThisWeek} buildsThisWeek={dashboardProps.buildsThisWeek} buildsPerWeek={dashboardProps.buildsPerWeek}
+              policyChangesLeft={dashboardProps.policyChangesLeft} researchingTech={dashboardProps.researchingTech}
+              rent={dashboardProps.rent} rentTier={dashboardProps.rentTier} rentMin={dashboardProps.rentMin} rentMax={dashboardProps.rentMax} rentStep={dashboardProps.rentStep}
+              budgets={dashboardProps.budgets} isPaused={dashboardProps.isPaused}
+              onOpenModal={handleOpenModal} onRentChange={(val) => setRentInput(String(val))} onRentRelease={() => handleSetRent(rentInput)}
+              onBudgetStep={handleBudgetStep} onStartWeek={handleDismissWeekly}
+              onRestart={() => { if (window.confirm('Are you sure you want to restart the game?')) handleReset(); }}
+            />
+            <DataPanel singleColumn
+              treasury={dashboardProps.treasury} income={dashboardProps.income} expenses={dashboardProps.expenses} net={dashboardProps.net}
+              incomeBreakdown={dashboardProps.incomeBreakdown} expenseBreakdown={dashboardProps.expenseBreakdown}
+              healthMetrics={dashboardProps.healthMetrics} metricHistory={dashboardProps.metricHistory} researchedCulture={dashboardProps.researchedCulture}
+              buildings={dashboardProps.buildings} residents={dashboardProps.residents} population={dashboardProps.population} capacity={dashboardProps.capacity}
+              aggregateStats={dashboardProps.aggregateStats} policies={dashboardProps.policies} events={dashboardProps.events} primitives={dashboardProps.primitives}
+            />
+          </>)}
+
+          {/* NARROW: One panel at a time, toggled */}
+          {layout === 'narrow' && narrowTab === 'actions' && (
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <ActionPanel hideCollapse
+                week={dashboardProps.week} day={dashboardProps.day} time={dashboardProps.time}
+                hasRecruitedThisWeek={dashboardProps.hasRecruitedThisWeek} buildsThisWeek={dashboardProps.buildsThisWeek} buildsPerWeek={dashboardProps.buildsPerWeek}
+                policyChangesLeft={dashboardProps.policyChangesLeft} researchingTech={dashboardProps.researchingTech}
+                rent={dashboardProps.rent} rentTier={dashboardProps.rentTier} rentMin={dashboardProps.rentMin} rentMax={dashboardProps.rentMax} rentStep={dashboardProps.rentStep}
+                budgets={dashboardProps.budgets} isPaused={dashboardProps.isPaused}
+                onOpenModal={handleOpenModal} onRentChange={(val) => setRentInput(String(val))} onRentRelease={() => handleSetRent(rentInput)}
+                onBudgetStep={handleBudgetStep} onStartWeek={handleDismissWeekly}
+                onRestart={() => { if (window.confirm('Are you sure you want to restart the game?')) handleReset(); }}
+              />
+            </div>
+          )}
+          {layout === 'narrow' && narrowTab === 'vitals' && (
+            <DataPanel singleColumn hideCollapse
+              treasury={dashboardProps.treasury} income={dashboardProps.income} expenses={dashboardProps.expenses} net={dashboardProps.net}
+              incomeBreakdown={dashboardProps.incomeBreakdown} expenseBreakdown={dashboardProps.expenseBreakdown}
+              healthMetrics={dashboardProps.healthMetrics} metricHistory={dashboardProps.metricHistory} researchedCulture={dashboardProps.researchedCulture}
+              buildings={dashboardProps.buildings} residents={dashboardProps.residents} population={dashboardProps.population} capacity={dashboardProps.capacity}
+              aggregateStats={dashboardProps.aggregateStats} policies={dashboardProps.policies} events={dashboardProps.events} primitives={dashboardProps.primitives}
+            />
+          )}
         </div>
       )}
 

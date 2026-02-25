@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { T, FONT, FS, tierColor } from './theme';
+import { T, FONT, FONT_BODY, FS, tierColor } from './theme';
 
 // Semi-circular 10-segment arc gauge for crowding/noise
 export function MiniGauge({ value, label, tierLabel }) {
@@ -42,10 +42,10 @@ export function MiniGauge({ value, label, tierLabel }) {
       <div style={{ fontFamily: FONT, fontSize: FS.micro, color: T.textPrimary, marginTop: '4px' }}>{label}</div>
       {hov && (
         <div style={{
-          position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)',
-          fontFamily: FONT, fontSize: FS.label, color: tierColor(tierLabel),
+          position: 'absolute', top: '-22px', left: '50%', transform: 'translateX(-50%)',
+          fontFamily: FONT_BODY, fontSize: '12px', color: tierColor(tierLabel),
           background: T.panelBg, border: `1px solid ${T.panelBorder}`,
-          padding: '2px 5px', whiteSpace: 'nowrap', zIndex: 10,
+          padding: '2px 6px', whiteSpace: 'nowrap', zIndex: 10,
         }}>{tierLabel} ({value})</div>
       )}
     </div>

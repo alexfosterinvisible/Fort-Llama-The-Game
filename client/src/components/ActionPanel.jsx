@@ -12,6 +12,8 @@ export function ActionPanel({
   budgets,             // { [key]: currentValue }
   budgetConfig,        // { [key]: { floor, ceiling } } for stepper bounds
   isPaused,
+  hideCollapse,        // hide collapse toggle (narrow mode)
+  fullWidth,           // unused in final design — ActionPanel stays 240px
   onOpenModal,         // (modalName) => void
   onRentChange,        // (value) => void
   onRentRelease,       // () => void
@@ -25,34 +27,42 @@ export function ActionPanel({
   const budgetEntries = Object.entries(budgets || {});
   const totalBudget = budgetEntries.reduce((s, [, v]) => s + v, 0);
 
-  // Collapsed state — thin stripe with expand arrow
-  if (!actionOpen) {
+  // Collapsed state — thin stripe with expand arrow + vertical label
+  if (!hideCollapse && !actionOpen) {
     return (
       <div onClick={() => setActionOpen(true)} style={{
         width: '36px', flexShrink: 0, background: T.actionBg,
         borderRight: `2px solid ${T.panelBorder}`,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        paddingTop: '10px', cursor: 'pointer', gap: '8px',
+        paddingTop: '12px', cursor: 'pointer', gap: '6px',
       }}>
-        <span style={{ fontFamily: FONT, fontSize: FS.brand, color: T.accent }}>►</span>
+        <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.accent }}>{'\u25BA'}</span>
+        <span style={{
+          fontFamily: FONT, fontSize: FS.micro, color: T.accent,
+          writingMode: 'vertical-rl', textOrientation: 'mixed', letterSpacing: '2px',
+        }}>Actions</span>
       </div>
     );
   }
 
   return (
-    <div style={{
-      flex: 1, minWidth: '180px', maxWidth: '300px', borderRight: `2px solid ${T.panelBorder}`,
-      background: T.actionBg, padding: '10px',
-      display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto',
+    <div className="fl-scroll" style={{
+      width: fullWidth ? '100%' : '240px', flexShrink: 0,
+      borderRight: fullWidth ? 'none' : `2px solid ${T.panelBorder}`,
+      background: T.actionBg, padding: '8px 8px 12px',
+      display: 'flex', flexDirection: 'column', gap: '8px',
+      overflowY: 'auto', overflowX: 'hidden',
     }}>
       {/* Collapse toggle */}
-      <div onClick={() => setActionOpen(false)} style={{
+      {!hideCollapse && (
+        <div onClick={() => setActionOpen(false)} style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          cursor: 'pointer', padding: '2px 0 4px', borderBottom: `1px solid ${T.panelBorder}`, marginBottom: '10px',
+          cursor: 'pointer', padding: '2px 0 6px', borderBottom: `1px solid ${T.panelBorder}`,
         }}>
           <span style={{ fontFamily: FONT, fontSize: FS.heading, color: T.accent, letterSpacing: '1px' }}>Actions</span>
-          <span style={{ fontFamily: FONT, fontSize: FS.label, color: T.textMuted }}>◄ Hide</span>
+          <span style={{ fontFamily: FONT, fontSize: FS.label, color: T.accent, opacity: 0.7 }}>{'\u25C4'} Hide</span>
         </div>
+      )}
 
       {/* Clock */}
       <div style={{
@@ -65,8 +75,8 @@ export function ActionPanel({
         <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textPrimary, letterSpacing: '1px' }}>{time}</span>
       </div>
 
-      {/* 2×2 Action buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+      {/* 2x2 Action buttons */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
         <ActionButton label="Recruit" icon={<PixelIcon type="recruit" color={T.accentBright} />}
           spent={hasRecruitedThisWeek} onClick={() => onOpenModal('recruit')} />
         <ActionButton label="Build" icon={<PixelIcon type="build" color={T.accentBright} />}
@@ -78,19 +88,19 @@ export function ActionPanel({
       </div>
 
       {/* Rent slider */}
-      <div style={{ background: T.panelBg, border: `2px solid ${T.panelBorder}`, padding: '8px 10px' }}>
-        <span style={{ fontFamily: FONT, fontSize: FS.heading, color: '#fff' }}>Rent</span>
+      <div style={{ background: T.panelBg, border: `2px solid ${T.panelBorder}`, padding: '6px 8px' }}>
+        <span style={{ fontFamily: FONT, fontSize: FS.body, color: '#fff' }}>Rent</span>
         <input className="fl-rent" type="range"
           min={rentMin || 50} max={rentMax || 500} step={rentStep || 10}
           value={rent}
           onChange={e => onRentChange(Number(e.target.value))}
           onMouseUp={onRentRelease}
           onTouchEnd={onRentRelease}
-          style={{ margin: '8px 0 6px' }}
+          style={{ margin: '6px 0 4px' }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.accent }}>{rentTier}</span>
-          <span style={{ fontFamily: FONT_BODY, fontSize: '16px', color: '#fff' }}>£{rent}</span>
+          <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: '#fff' }}>&pound;{rent}</span>
         </div>
       </div>
 
@@ -98,41 +108,44 @@ export function ActionPanel({
       <div>
         <div onClick={() => setBudgetsOpen(!budgetsOpen)} style={{
           background: T.buttonBg, border: `2px solid ${T.buttonBorder}`,
-          padding: '6px 8px', cursor: 'pointer',
+          padding: '5px 8px', cursor: 'pointer',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textPrimary }}>Budgets</span>
-          <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textSecondary }}>{budgetsOpen ? '▼' : '►'}</span>
+          <span style={{ fontFamily: FONT, fontSize: FS.body, color: T.textSecondary }}>{budgetsOpen ? '\u25BC' : '\u25BA'}</span>
         </div>
         {budgetsOpen && (
-          <div style={{ background: T.panelBg, border: `2px solid ${T.panelBorder}`, borderTop: 'none', padding: '6px' }}>
+          <div style={{ background: T.panelBg, border: `2px solid ${T.panelBorder}`, borderTop: 'none', padding: '4px 6px' }}>
             {budgetEntries.map(([key, value], i) => {
               const display = BUDGET_DISPLAY[key] || { name: key, color: T.textSecondary };
               return (
                 <div key={key} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0',
                   borderBottom: i < budgetEntries.length - 1 ? '1px solid rgba(70,70,70,0.4)' : 'none',
                 }}>
-                  <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.textSecondary, width: '72px', flexShrink: 0 }}>{display.name}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{
+                    fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary,
+                    flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '6px',
+                  }}>{display.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
                     {['--', '-'].map(btn => (
                       <div key={btn} onClick={() => onBudgetStep(key, btn === '--' ? -10 : -5)} style={{
                         width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: T.buttonBg, border: `1px solid ${T.buttonBorder}`, cursor: 'pointer',
-                        fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary,
+                        fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary,
                       }}>{btn}</div>
                     ))}
                     <div style={{
-                      minWidth: '38px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'rgba(0,0,0,0.2)', padding: '0 4px',
+                      width: '38px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(0,0,0,0.2)',
                     }}>
-                      <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.textPrimary }}>£{value}</span>
+                      <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textPrimary }}>&pound;{value}</span>
                     </div>
                     {['+', '++'].map(btn => (
                       <div key={btn} onClick={() => onBudgetStep(key, btn === '++' ? 10 : 5)} style={{
                         width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: T.buttonBg, border: `1px solid ${T.buttonBorder}`, cursor: 'pointer',
-                        fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary,
+                        fontFamily: FONT_BODY, fontSize: '12px', color: T.textSecondary,
                       }}>{btn}</div>
                     ))}
                   </div>
@@ -144,32 +157,34 @@ export function ActionPanel({
         {/* Total — always visible */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '6px 8px',
+          padding: '5px 8px',
           background: T.panelBg, border: `2px solid ${T.panelBorder}`, borderTop: 'none',
         }}>
-          <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.textSecondary }}>Total Budget</span>
-          <span style={{ fontFamily: FONT_BODY, fontSize: '14px', color: T.negative }}>
-            -£{totalBudget}/wk
+          <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.textSecondary }}>Total</span>
+          <span style={{ fontFamily: FONT_BODY, fontSize: '13px', color: T.negative }}>
+            -&pound;{totalBudget}/wk
           </span>
         </div>
       </div>
 
       {/* Start Week + Restart */}
-      <div onClick={isPaused ? onStartWeek : undefined} style={{
-        background: '#3a7a5a', padding: '10px 8px', textAlign: 'center',
-        cursor: isPaused ? 'pointer' : 'default',
-        border: '2px solid #5aaa7a',
-        opacity: isPaused ? 1 : 0.5,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <span style={{ fontFamily: FONT, fontSize: FS.heading, color: '#fff', letterSpacing: '1px' }}>Start Week</span>
-      </div>
-      <div onClick={onRestart} style={{
-        background: 'rgba(160,70,70,0.35)', border: '2px solid rgba(196,126,126,0.5)',
-        padding: '10px 8px', textAlign: 'center', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <span style={{ fontFamily: FONT, fontSize: FS.heading, color: T.negative, letterSpacing: '1px' }}>Restart Game</span>
+      <div style={{ paddingTop: '4px' }}>
+        <div onClick={isPaused ? onStartWeek : undefined} style={{
+          background: '#3a7a5a', padding: '10px 6px', textAlign: 'center',
+          cursor: isPaused ? 'pointer' : 'default',
+          border: '2px solid #5aaa7a',
+          opacity: isPaused ? 1 : 0.5,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontFamily: FONT, fontSize: FS.heading, color: '#fff', letterSpacing: '1px' }}>Start Week</span>
+        </div>
+        <div onClick={onRestart} style={{
+          background: 'rgba(160,70,70,0.35)', border: '2px solid rgba(196,126,126,0.5)',
+          marginTop: '4px', padding: '7px 6px', textAlign: 'center', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontFamily: FONT, fontSize: FS.label, color: T.negative, letterSpacing: '1px' }}>Restart</span>
+        </div>
       </div>
     </div>
   );
