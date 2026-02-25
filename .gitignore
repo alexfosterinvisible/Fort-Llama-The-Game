@@ -142,3 +142,4 @@ server/saved-game.json
 # OpenMemory - IDE/Assistant specific rules
 .cursor/rules/openmemory.mdc
 CLAUDE.md
+.specstory
