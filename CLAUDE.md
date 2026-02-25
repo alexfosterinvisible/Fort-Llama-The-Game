@@ -1,5 +1,9 @@
 # Fort Llama – Claude Code Context
 
+## Team
+- **tfparsons** (GitHub: @tfparsons) - Owner
+- **Alex Foster** (GitHub: @alexfosterinvisible) - Collaborator
+
 ## What This Is
 
 Fort Llama is a single-player browser-based city management simulation. Players run a communal living facility for anthropomorphic llamas, balancing economics, social systems, and resident wellbeing. The game models a four-layer pipeline:
