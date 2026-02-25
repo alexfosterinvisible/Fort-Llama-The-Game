@@ -137,6 +137,7 @@ dist
 
 # Game saved defaults (persisted user config)
 server/saved-defaults.json
+server/saved-game.json
 
 # OpenMemory - IDE/Assistant specific rules
 .cursor/rules/openmemory.mdc
