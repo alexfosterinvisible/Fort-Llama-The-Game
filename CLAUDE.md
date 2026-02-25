@@ -4,6 +4,9 @@
 - **tfparsons** (GitHub: @tfparsons) - Owner
 - **Alex Foster** (GitHub: @alexfosterinvisible) - Collaborator
 
+## Development Workflow
+- **Trunk-based development**: atomic PRs, one issue per branch per PR with identical names. Small, frequent PRs - only combine changes where they don't make sense apart. Code must work and tests must pass for every PR.
+
 ## What This Is
 
 Fort Llama is a single-player browser-based city management simulation. Players run a communal living facility for anthropomorphic llamas, balancing economics, social systems, and resident wellbeing. The game models a four-layer pipeline:
