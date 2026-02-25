@@ -10,10 +10,6 @@ Found a commune and expand. Recruit members, invest in facilities, find equilibr
 
 Fort Llama is a single-player strategy game that plays like an arcade-style management sim. You're in charge of a fledgling commune of llamas: setting rent, hiring staff, building facilities, researching upgrades, and trying to keep the whole thing from collapsing under its own weight.
 
-The catch? The default state of your commune drifts toward failure. Dirt accumulates, maintenance backlogs grow, fatigue builds, and residents leave. Every week you don't intervene, entropy wins a little more ground. Success feels earned — because it is.
-
-The game is inspired by real experience running a co-living community, and translates that lived experience into a layered simulation where your decisions ripple through economics, social systems, and resident wellbeing.
-
 ### Core Loop
 
 Each game week, you review your commune's state and make decisions:
@@ -111,12 +107,6 @@ Detailed contribution workflows are documented in [Architecture](docs/Fort_Llama
 - **Build:** Vite
 - **Balance testing:** Headless simulator (`tools/simulate.js`)
 - **Deployment (planned):** Cloudflare Pages + Workers + D1
-
----
-
-## License
-
-TBC
 
 ---
 
