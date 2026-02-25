@@ -1,5 +1,7 @@
 # Fort Llama – Claude Code Context
 
+**Best practice, industry standard, always.**
+
 ## Team
 - **tfparsons** (GitHub: @tfparsons) - Owner
 - **Alex Foster** (GitHub: @alexfosterinvisible) - Collaborator
