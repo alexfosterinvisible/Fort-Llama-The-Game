@@ -5,7 +5,7 @@
 - **Alex Foster** (GitHub: @alexfosterinvisible) - Collaborator
 
 ## Development Workflow
-- **Trunk-based development**: atomic PRs, one issue per branch per PR with identical names. Small, frequent PRs - only combine changes where they don't make sense apart. Code must work and tests must pass for every PR.
+- **Trunk-based development**: atomic PRs, one issue per branch per PR with identical names. Small, frequent PRs - only combine changes where they don't make sense apart. Code must work and tests must pass for every PR. PRs must always be linked to their issue (use `Closes #N` in PR body).
 
 ## What This Is
 
